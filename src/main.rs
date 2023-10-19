@@ -1,7 +1,16 @@
 mod platform;
 
 extern crate env_logger;
+
+#[cfg(target_os = "windows")]
 use crate::platform::windows::reflink_sync;
+
+#[cfg(target_os = "linux")]
+use crate::platform::linux::reflink_sync;
+
+#[cfg(target_os = "macos")]
+use crate::platform::macos::reflink_sync;
+
 use log::info;
 use std::path::PathBuf;
 use std::{
