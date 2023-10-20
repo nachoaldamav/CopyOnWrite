@@ -3,14 +3,10 @@ use std::path::PathBuf;
 
 #[cfg(target_os = "windows")]
 fn sanitize_windows_path(path: PathBuf) -> io::Result<PathBuf> {
-    // Note: Add your own logic to sanitize or modify the path specifically for Windows.
-    // For example, you could check if the path exceeds a certain length and handle it accordingly.
-
     let mut path_str = path.to_string_lossy().to_string();
 
     if path_str.len() >= 260 {
         // Handling code for long paths on Windows
-        // Note: This is a simple example; actual implementation might be more complex.
         path_str = format!("\\\\?\\{}", path_str);
     }
 
@@ -46,10 +42,18 @@ mod tests {
 
     #[test]
     fn test_absolute() {
-        // Replace with an actual test path.
         let test_path = "some/relative/path";
         let abs_path = absolute(test_path);
         assert!(abs_path.is_ok());
         assert!(abs_path.unwrap().is_absolute());
+    }
+
+    #[test]
+    #[cfg(target_os = "windows")]
+    fn test_absolute_long_path() {
+        let test_path = String::from_utf8(vec![b'a'; 300]).unwrap();
+        let abs_path = absolute(&test_path);
+        assert!(abs_path.is_ok());
+        assert!(abs_path.unwrap().to_string_lossy().len() >= 260);
     }
 }
