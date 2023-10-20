@@ -10,7 +10,7 @@ use platform::windows::reflink_sync;
 use reflink_copy::reflink as reflink_sync;
 
 #[cfg(target_os = "macos")]
-use reflink::reflink as reflink_sync;
+use reflink_copy::reflink as reflink_sync;
 
 pub fn reflink_file_sync(src: &str, dest: &str) -> std::io::Result<()> {
     reflink_sync(
