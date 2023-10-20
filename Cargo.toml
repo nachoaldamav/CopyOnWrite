@@ -20,10 +20,6 @@ windows = { version = "0.51.1", features = [
 ] }
 widestring = "1.0.2"
 
-# Dependencies specific to macOS
-[target.'cfg(target_os = "macos")'.dependencies]
-libc = "0.2.149"
-
-# Dependencies specific to Linux
-[target.'cfg(target_os = "linux")'.dependencies]
-libc = "0.2.149"
+# Dependencies specific to Non-windows
+[target.'cfg(not(target_os = "windows"))'.dependencies]
+reflink-copy = { version = "0.1.10" }

@@ -1,4 +1,3 @@
-use windows::Win32::Storage::FileSystem::FILE_FLAG_NO_BUFFERING;
 use std::collections::HashMap;
 use std::sync::Mutex;
 use std::{
@@ -15,8 +14,8 @@ use windows::{
             CreateFileW, FileEndOfFileInfo, FileStandardInfo, GetDiskFreeSpaceW,
             GetFileInformationByHandleEx, GetFileSizeEx, GetVolumeInformationW,
             SetFileInformationByHandle, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, FILE_BASIC_INFO,
-            FILE_END_OF_FILE_INFO, FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE,
-            OPEN_EXISTING,
+            FILE_END_OF_FILE_INFO, FILE_FLAG_NO_BUFFERING, FILE_SHARE_DELETE, FILE_SHARE_READ,
+            FILE_SHARE_WRITE, OPEN_EXISTING,
         },
         System::{
             Ioctl::{

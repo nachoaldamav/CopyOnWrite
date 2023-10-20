@@ -1,5 +1,5 @@
-mod platform;
 mod common;
+mod platform;
 
 use common::utils::absolute;
 
@@ -7,17 +7,14 @@ use common::utils::absolute;
 use platform::windows::reflink_sync;
 
 #[cfg(target_os = "linux")]
-use platform::linux::reflink_sync;
+use reflink_copy::reflink as reflink_sync;
 
 #[cfg(target_os = "macos")]
-use platform::macos::reflink_sync;
+use reflink::reflink as reflink_sync;
 
 pub fn reflink_file_sync(src: &str, dest: &str) -> std::io::Result<()> {
-    let src_path = absolute(src)?;
-    let dest_path = absolute(dest)?;
-
     reflink_sync(
-        src_path.to_str().unwrap_or_default(),
-        dest_path.to_str().unwrap_or_default(),
+        absolute(src)?.to_str().unwrap_or_default(),
+        absolute(dest)?.to_str().unwrap_or_default(),
     )
 }
