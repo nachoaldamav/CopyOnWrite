@@ -7,6 +7,7 @@ edition = "2021"
 env_logger = { version = "0.10.0", features = ["auto-color", "color"] }
 lazy_static = "1.4.0"
 log = "0.4.20"
+tempfile = "3.8.0"
 
 # Dependencies specific to Windows
 [target.'cfg(target_os = "windows")'.dependencies]

@@ -400,3 +400,193 @@ fn close_handle(handle: HANDLE) -> Result<(), windows::core::Error> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile;
+    use tempfile::Builder;
+    use std::{env, io::{Read, Write}};
+
+    #[test]
+    fn should_open_file() {
+        let file_path = "C:\\Windows\\System32\\notepad.exe";
+        let file_handle = open_file(file_path);
+        assert!(file_handle.is_ok());
+
+        // Close the handle
+        file_handle.unwrap();
+    }
+
+    #[test]
+    fn should_fail_to_open_nonexistent_file() {
+        let file_path = "C:\\Windows\\System32\\nonexistent.exe";
+        let file_handle = open_file(file_path);
+        assert!(file_handle.is_err());
+    }
+
+    #[test]
+    fn should_create_file() {
+        // The file should be located in the temp directory
+        let temp_dir = tempfile::tempdir().unwrap();
+        let file_path = temp_dir.path().join("test.txt");
+
+        let file_handle = create_file(file_path.to_str().unwrap());
+
+        // Close the handle
+        close_handle(file_handle.unwrap()).unwrap();
+
+        // Try to open the file
+        let file_handle = open_file(file_path.to_str().unwrap());
+
+        // Close the handle
+        close_handle(file_handle.unwrap()).unwrap();
+
+        // Clean up
+        temp_dir.close().unwrap();
+    }
+
+    #[test]
+    fn should_fail_to_create_existing_file() {
+        // The file should be located in the temp directory
+        let temp_dir = tempfile::tempdir().unwrap();
+        let file_path = temp_dir.path().join("test.txt");
+
+        // Create the file
+        let file_handle = create_file(file_path.to_str().unwrap());
+
+        // Close the handle
+        close_handle(file_handle.unwrap()).unwrap();
+
+        // Try to create the file again
+        let file_handle = create_file(file_path.to_str().unwrap());
+
+        assert!(file_handle.is_err());
+
+        // Clean up
+        temp_dir.close().unwrap();
+    }
+
+    #[test]
+    fn should_get_file_size() {
+        // Create a tmp file, write some data (Using the standard library), open that file and check the size, then close the file, compare the sizes
+        let temp_dir = tempfile::tempdir().unwrap();
+        let file_path = temp_dir.path().join("test.txt");
+
+        // Create the file
+        std::fs::File::create(&file_path).unwrap();
+
+        // Write some data
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .open(&file_path)
+            .unwrap();
+
+        let data = "Hello, world!";
+
+        file.write_all(data.as_bytes()).unwrap();
+
+        // Close the file
+        std::mem::drop(file);
+
+        // Open the file
+        let file_handle = open_file(file_path.to_str().unwrap()).unwrap();
+
+        // Get the file size
+        let file_size = get_file_size(file_handle).unwrap();
+
+        // Close the file
+        close_handle(file_handle).unwrap();
+
+        // Compare the sizes
+        assert_eq!(file_size, data.len() as u64);
+
+        // Clean up
+        temp_dir.close().unwrap();
+    }
+
+    #[test]
+    fn should_close_handle() {
+        let file_path = "C:\\Windows\\System32\\notepad.exe";
+        let file_handle = open_file(file_path).unwrap();
+        let result = close_handle(file_handle);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn should_get_current_volume_info() {
+        let current_dir = std::env::current_dir().unwrap();
+        let current_dir_str = current_dir.to_str().unwrap();
+
+        let volume_info = get_volume_info_for_path(current_dir_str).unwrap();
+
+        assert!(volume_info.supports_cow);
+        assert_eq!(volume_info.cluster_size > 0, true);
+    }
+
+    #[test]
+    fn should_get_volume_info_for_path() {
+        let file_path = "C:\\Windows\\System32\\notepad.exe";
+        let volume_info = get_volume_info_for_path(file_path).unwrap();
+
+        assert!(volume_info.supports_cow);
+        assert_eq!(volume_info.cluster_size > 0, true);
+    }
+
+    #[test]
+    fn should_get_file_sparse_status() {
+        let file_path = "C:\\Windows\\System32\\notepad.exe";
+        let file_handle = open_file(file_path).unwrap();
+        let sparse_status = get_file_sparse_status(file_handle).unwrap();
+        close_handle(file_handle).unwrap();
+        assert_eq!(sparse_status, false);
+    }
+
+    #[test]
+    fn should_clone_file() {
+        let current_dir = env::current_dir().unwrap();
+        let temp_dir = Builder::new()
+            .prefix("reflink-rs-test")
+            .tempdir_in(current_dir)
+            .unwrap();
+
+        let src_file_path = temp_dir.path().join("src.txt");
+        let dest_file_path = temp_dir.path().join("dest.txt");
+
+        // Create the source file
+        std::fs::File::create(&src_file_path).unwrap();
+
+        // Write some data
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .open(&src_file_path)
+            .unwrap();
+
+        let data = "Hello, world!";
+        file.write_all(data.as_bytes()).unwrap();
+
+        // Close the file
+        std::mem::drop(file);
+
+        // Clone the file
+        reflink_sync(
+            src_file_path.to_str().unwrap(),
+            dest_file_path.to_str().unwrap(),
+        ).unwrap();
+
+        // Open the destination file using the standard library, to check the contents
+        let mut file = std::fs::OpenOptions::new()
+            .read(true)
+            .open(&dest_file_path)
+            .unwrap();
+
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).unwrap();
+
+        assert_eq!(contents, data);
+        
+        // Clean up
+        temp_dir.close().unwrap();
+    }
+}
+
