@@ -1,9 +1,10 @@
+mod common;
 mod platform;
 
 extern crate env_logger;
 
 #[cfg(target_os = "windows")]
-use crate::platform::windows::reflink_sync;
+use platform::windows::reflink_sync;
 
 #[cfg(target_os = "linux")]
 use reflink_copy::reflink as reflink_sync;
@@ -11,17 +12,9 @@ use reflink_copy::reflink as reflink_sync;
 #[cfg(target_os = "macos")]
 use reflink_copy::reflink as reflink_sync;
 
+use common::utils::absolute;
 use log::info;
-use std::path::PathBuf;
-use std::{
-    env,
-    io::{self, Read},
-};
-
-fn to_absolute_path(relative_path: &str) -> std::io::Result<PathBuf> {
-    let current_dir = env::current_dir()?;
-    Ok(current_dir.join(relative_path))
-}
+use std::io::{self, Read};
 
 fn main() {
     env_logger::init();
@@ -29,8 +22,8 @@ fn main() {
     info!("Starting up");
 
     // Convert relative paths to absolute paths
-    let src_absolute = to_absolute_path("my-file.txt").unwrap();
-    let dest_absolute = to_absolute_path("my-file-copy.txt").unwrap();
+    let src_absolute = absolute("my-file.txt").unwrap();
+    let dest_absolute = absolute("my-file-copy.txt").unwrap();
 
     // Create a file with some data (1 MB)
     info!("Creating a file with some data (1 MB)");
