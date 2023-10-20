@@ -1,8 +1,8 @@
 mod common;
 mod platform;
 
-use std::path::PathBuf;
 use common::utils::absolute;
+use std::path::PathBuf;
 
 #[cfg(target_os = "windows")]
 use platform::windows::reflink_sync;
