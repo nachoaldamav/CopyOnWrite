@@ -74,9 +74,6 @@ jobs:
           --disk=$DISK_NAME \
           --zone=us-central1-a
 
-    - name: Wait for VM to be ready
-      run: gcloud compute instances wait $INSTANCE_NAME --zone=us-central1-a --quiet
-
     - name: Create the repo directory on the disk
       run: |
         gcloud compute ssh ghaction@$INSTANCE_NAME --zone=us-central1-a \
