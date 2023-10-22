@@ -42,7 +42,6 @@ jobs:
           --project=${{ secrets.GCP_PROJECT_ID }} `
           --zone=us-central1-a `
           --machine-type=e2-medium `
-          --network-interface=network-tier=PREMIUM,stack-type=IPV4_ONLY,subnet=default `
           --no-restart-on-failure `
           --maintenance-policy=TERMINATE `
           --provisioning-model=SPOT `
