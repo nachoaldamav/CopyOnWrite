@@ -76,7 +76,7 @@ jobs:
     - name: SSH and Prepare Disk and User
       run: |
         gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a \
-          --command="sudo mkfs.btrfs /dev/sdb && sudo mount /dev/sdb /mnt/btrfs && sudo useradd -m newuser && mkdir ~newuser/.ssh && cat ~/id_rsa.pub >> ~newuser/.ssh/authorized_keys && sudo chown -R newuser:newuser ~newuser/.ssh && chmod 700 ~newuser/.ssh && chmod 600 ~newuser/.ssh/authorized_keys && sudo chown newuser:newuser /mnt/btrfs"
+          --command="sudo mkdir -p /mnt/btrfs && sudo mkfs.btrfs /dev/sdb && sudo mount /dev/sdb /mnt/btrfs && sudo useradd -m newuser && mkdir ~newuser/.ssh && cat ~/id_rsa.pub >> ~newuser/.ssh/authorized_keys && sudo chown -R newuser:newuser ~newuser/.ssh && chmod 700 ~newuser/.ssh && chmod 600 ~newuser/.ssh/authorized_keys && sudo chown newuser:newuser /mnt/btrfs"
 
     - name: Copy Repo to GCP VM
       run: |
@@ -89,7 +89,21 @@ jobs:
           --ssh-key-file=~/.ssh/id_rsa \
           --command="cd /mnt/btrfs/$REPO_NAME && cargo test --release"
     
-    - name: Delete GCP VM and Disk
-      run: |
-        gcloud compute instances delete $INSTANCE_NAME --zone=us-central1-a --quiet
-        gcloud compute disks delete $DISK_NAME --zone=us-central1-a --quiet
+          - name: Delete GCP VM if exists
+          if: always()
+          run: |
+            if gcloud compute instances describe $INSTANCE_NAME --zone=us-central1-a > /dev/null 2>&1; then
+              gcloud compute instances delete $INSTANCE_NAME --zone=us-central1-a --quiet
+            else
+              echo "VM does not exist. Skipping deletion."
+            fi
+        
+        - name: Delete GCP Disk if exists
+          if: always()
+          run: |
+            if gcloud compute disks describe $DISK_NAME --zone=us-central1-a > /dev/null 2>&1; then
+              gcloud compute disks delete $DISK_NAME --zone=us-central1-a --quiet
+            else
+              echo "Disk does not exist. Skipping deletion."
+            fi
+        
