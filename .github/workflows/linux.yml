@@ -94,6 +94,12 @@ jobs:
       run: |
         REPO_NAME=$(basename $(git rev-parse --show-toplevel))
         gcloud compute scp --recurse ../$REPO_NAME ghaction@$INSTANCE_NAME:/mnt/btrfs/$REPO_NAME --zone=us-central1-a --ssh-key-file=~/.ssh/id_rsa
+    
+    - name: List files on VM
+      run: |
+        gcloud compute ssh ghaction@$INSTANCE_NAME --zone=us-central1-a \
+          --ssh-key-file=~/.ssh/id_rsa \
+          --command="ls -la /mnt/btrfs/$REPO_NAME"
         
     - name: Run Tests as New User
       run: |
