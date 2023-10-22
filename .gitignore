@@ -1,1 +1,3 @@
 /target
+*-key.json
+*-role-definition.yaml

@@ -1,0 +1,94 @@
+name: Deploy and Run Tests on GCP VM
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Authenticate with Google Cloud
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+    
+    - name: Setup GCP environment
+      uses: google-github-actions/setup-gcloud@v1
+
+    - name: Generate random instance and disk name
+      run: |
+        INSTANCE_NAME=$(uuidgen | cut -d '-' -f1)
+        DISK_NAME="$INSTANCE_NAME-disk"
+        echo "INSTANCE_NAME=$INSTANCE_NAME" >> $GITHUB_ENV
+        echo "DISK_NAME=$DISK_NAME" >> $GITHUB_ENV
+
+    - name: Set default project
+      run: |
+        gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
+
+    - name: Create GCP VM with Spot provisioning
+      run: |
+        gcloud compute instances create $INSTANCE_NAME \
+        --project=${{ secrets.GCP_PROJECT_ID }} \
+        --zone=us-central1-a \
+        --machine-type=e2-small \
+        --network-interface=network-tier=PREMIUM,stack-type=IPV4_ONLY,subnet=default \
+        --no-restart-on-failure \
+        --maintenance-policy=TERMINATE \
+        --provisioning-model=SPOT \
+        --instance-termination-action=DELETE \
+        --max-run-duration=3600s \
+        --service-account=${{ secrets.GCP_SERVICE_ACCOUNT }} \
+        --scopes=https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring.write,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append \
+        --create-disk=auto-delete=yes,boot=yes,device-name=$INSTANCE_NAME,image=projects/ubuntu-os-cloud/global/images/ubuntu-2004-focal-v20230918,mode=rw,size=10,type=projects/${{ secrets.GCP_PROJECT_ID }}/zones/us-central1-a/diskTypes/pd-balanced \
+        --no-shielded-secure-boot \
+        --shielded-vtpm \
+        --shielded-integrity-monitoring \
+        --reservation-affinity=any \
+        --metadata-from-file startup-script=init-script.sh
+      
+
+    - name: Attach empty disk to VM
+      run: |
+        gcloud compute disks create $DISK_NAME \
+          --size=10GB \
+          --zone=us-central1-a
+        gcloud compute instances attach-disk $INSTANCE_NAME \
+          --disk=$DISK_NAME \
+          --zone=us-central1-a
+
+    - name: Generate SSH key pair
+      run: |
+        ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N ""
+    
+    - name: Upload public key to VM
+      run: |
+        gcloud compute scp ~/.ssh/id_rsa.pub $INSTANCE_NAME:~/
+
+    - name: SSH and Prepare Disk and User
+      run: |
+        gcloud compute ssh $INSTANCE_NAME \
+          --command="sudo mkfs.btrfs /dev/sdb && sudo mount /dev/sdb /mnt/btrfs && sudo useradd -m newuser && mkdir ~newuser/.ssh && cat ~/id_rsa.pub >> ~newuser/.ssh/authorized_keys && sudo chown -R newuser:newuser ~newuser/.ssh && chmod 700 ~newuser/.ssh && chmod 600 ~newuser/.ssh/authorized_keys && sudo chown newuser:newuser /mnt/btrfs"
+
+    - name: Copy Repo to GCP VM
+      run: |
+        REPO_NAME=$(basename $(git rev-parse --show-toplevel))
+        gcloud compute scp --recurse ../$REPO_NAME $INSTANCE_NAME:/mnt/btrfs/
+        
+    - name: Run Tests as New User
+      run: |
+        gcloud compute ssh newuser@$INSTANCE_NAME \
+          --ssh-key-file=~/.ssh/id_rsa \
+          --command="cd /mnt/btrfs/$REPO_NAME && cargo test --release"
+    
+    - name: Delete GCP VM and Disk
+      run: |
+        gcloud compute instances delete $INSTANCE_NAME --zone=us-central1-a --quiet
+        gcloud compute disks delete $DISK_NAME --zone=us-central1-a --quiet
