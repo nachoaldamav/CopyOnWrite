@@ -11,118 +11,120 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-    - name: Authenticate with Google Cloud
-      uses: google-github-actions/auth@v1
-      with:
-        credentials_json: ${{ secrets.GCP_CREDENTIALS }}
-    
-    - name: Setup GCP environment
-      uses: google-github-actions/setup-gcloud@v1
+      - name: Authenticate with Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
 
-    - name: Generate random instance and disk name
-      run: |
-        INSTANCE_UUID=$(uuidgen | cut -d '-' -f1)
-        INSTANCE_NAME="vm-$INSTANCE_UUID"
-        DISK_NAME="$INSTANCE_NAME-disk"
-        echo "INSTANCE_NAME=$INSTANCE_NAME" >> $GITHUB_ENV
-        echo "DISK_NAME=$DISK_NAME" >> $GITHUB_ENV
-    
+      - name: Setup GCP environment
+        uses: google-github-actions/setup-gcloud@v1
 
-    - name: Set default project
-      run: |
-        gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
+      - name: Generate random instance and disk name
+        run: |
+          INSTANCE_UUID=$(uuidgen | cut -d '-' -f1)
+          INSTANCE_NAME="vm-$INSTANCE_UUID"
+          DISK_NAME="$INSTANCE_NAME-disk"
+          echo "INSTANCE_NAME=$INSTANCE_NAME" >> $GITHUB_ENV
+          echo "DISK_NAME=$DISK_NAME" >> $GITHUB_ENV
 
-    - name: Generate SSH key pair
-      run: |
-        ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N ""
-          
-    - name: Set SSH public key
-      run: |
-        echo "SSH_PUBLIC_KEY=$(cat ~/.ssh/id_rsa.pub)" >> $GITHUB_ENV
+      - name: Set default project
+        run: |
+          gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
 
-    - name: Create GCP VM with Spot provisioning
-      run: |
-        gcloud compute instances create $INSTANCE_NAME \
-        --project=${{ secrets.GCP_PROJECT_ID }} \
-        --zone=us-central1-a \
-        --machine-type=e2-small \
-        --network-interface=network-tier=PREMIUM,stack-type=IPV4_ONLY,subnet=default \
-        --no-restart-on-failure \
-        --maintenance-policy=TERMINATE \
-        --provisioning-model=SPOT \
-        --instance-termination-action=DELETE \
-        --service-account=${{ secrets.GCP_SERVICE_ACCOUNT }} \
-        --scopes=https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring.write,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append \
-        --create-disk=auto-delete=yes,boot=yes,device-name=$INSTANCE_NAME,image=projects/ubuntu-os-cloud/global/images/ubuntu-2004-focal-v20230918,mode=rw,size=10,type=projects/${{ secrets.GCP_PROJECT_ID }}/zones/us-central1-a/diskTypes/pd-balanced \
-        --no-shielded-secure-boot \
-        --shielded-vtpm \
-        --shielded-integrity-monitoring \
-        --reservation-affinity=any \
-        --metadata-from-file startup-script=init-script.sh \
-        --metadata=ssh-keys="ghaction:${{ env.SSH_PUBLIC_KEY }}"
-      
+      - name: Generate SSH key pair
+        run: |
+          ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N ""
 
-    - name: Attach empty disk to VM
-      run: |
-        gcloud compute disks create $DISK_NAME \
-          --size=10GB \
-          --zone=us-central1-a
-        gcloud compute instances attach-disk $INSTANCE_NAME \
-          --disk=$DISK_NAME \
-          --zone=us-central1-a
+      - name: Set SSH public key
+        run: |
+          echo "SSH_PUBLIC_KEY=$(cat ~/.ssh/id_rsa.pub)" >> $GITHUB_ENV
 
-    - name: Wait for VM to be ready
-      run: |
-        for i in {1..30}; do
-            if gcloud compute ssh $INSTANCE_NAME --command="echo ready" --zone=us-central1-a; then
-            break
-            else
-            echo "Retrying ($i)..."
-            sleep 2
-            fi
-        done
+      - name: Create GCP VM with Spot provisioning
+        run: |
+          gcloud compute instances create $INSTANCE_NAME \
+          --project=${{ secrets.GCP_PROJECT_ID }} \
+          --zone=us-central1-a \
+          --machine-type=e2-small \
+          --network-interface=network-tier=PREMIUM,stack-type=IPV4_ONLY,subnet=default \
+          --no-restart-on-failure \
+          --maintenance-policy=TERMINATE \
+          --provisioning-model=SPOT \
+          --instance-termination-action=DELETE \
+          --service-account=${{ secrets.GCP_SERVICE_ACCOUNT }} \
+          --scopes=https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring.write,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append \
+          --create-disk=auto-delete=yes,boot=yes,device-name=$INSTANCE_NAME,image=projects/ubuntu-os-cloud/global/images/ubuntu-2004-focal-v20230918,mode=rw,size=10,type=projects/${{ secrets.GCP_PROJECT_ID }}/zones/us-central1-a/diskTypes/pd-balanced \
+          --no-shielded-secure-boot \
+          --shielded-vtpm \
+          --shielded-integrity-monitoring \
+          --reservation-affinity=any \
+          --metadata-from-file startup-script=init-script.sh \
+          --metadata=ssh-keys="ghaction:${{ env.SSH_PUBLIC_KEY }}"
 
-    - name: Create the repo directory on the disk
-      run: |
-        gcloud compute ssh ghaction@$INSTANCE_NAME --zone=us-central1-a \
-          --command="sudo mkdir -p /mnt/btrfs/$REPO_NAME && sudo chown -R ghaction:ghaction /mnt/btrfs/$REPO_NAME"
-      
-    - name: Copy Repo to GCP VM
-      run: |
-        REPO_NAME=$(basename $(git rev-parse --show-toplevel))
-        gcloud compute scp --recurse ../$REPO_NAME ghaction@$INSTANCE_NAME:/mnt/btrfs/$REPO_NAME --zone=us-central1-a --ssh-key-file=~/.ssh/id_rsa
-    
-    - name: List files on VM
-      run: |
-        gcloud compute ssh ghaction@$INSTANCE_NAME --zone=us-central1-a \
-          --ssh-key-file=~/.ssh/id_rsa \
-          --command="ls -la /mnt/btrfs/$REPO_NAME"
-        
-    - name: Run Tests as New User
-      run: |
-        gcloud compute ssh ghaction@$INSTANCE_NAME --zone=us-central1-a \
-          --ssh-key-file=~/.ssh/id_rsa \
-          --command="cd /mnt/btrfs/$REPO_NAME && cargo test --release"
-    
-    # Cleanup
-    - name: Delete GCP VM if exists
-      if: always()
-      run: |
-        if gcloud compute instances describe $INSTANCE_NAME --zone=us-central1-a > /dev/null 2>&1; then
-          gcloud compute instances delete $INSTANCE_NAME --zone=us-central1-a --quiet
-        else
-          echo "VM does not exist. Skipping deletion."
-        fi
+      - name: Attach empty disk to VM
+        run: |
+          gcloud compute disks create $DISK_NAME \
+            --size=10GB \
+            --zone=us-central1-a
+          gcloud compute instances attach-disk $INSTANCE_NAME \
+            --disk=$DISK_NAME \
+            --zone=us-central1-a
 
-    - name: Delete GCP Disk if exists
-      if: always()
-      run: |
-        if gcloud compute disks describe $DISK_NAME --zone=us-central1-a > /dev/null 2>&1; then
-          gcloud compute disks delete $DISK_NAME --zone=us-central1-a --quiet
-        else
-          echo "Disk does not exist. Skipping deletion."
-        fi
-        
+      - name: Wait for VM to be ready
+        run: |
+          for i in {1..30}; do
+              if gcloud compute ssh $INSTANCE_NAME --command="echo ready" --zone=us-central1-a; then
+              break
+              else
+              echo "Retrying ($i)..."
+              sleep 2
+              fi
+          done
+
+      - name: Create the repo directory on the disk
+        run: |
+          gcloud compute ssh ghaction@$INSTANCE_NAME --zone=us-central1-a \
+            --command="sudo mkdir -p /mnt/btrfs/$REPO_NAME && sudo chown -R ghaction:ghaction /mnt/btrfs/$REPO_NAME"
+
+      - name: Copy Repo to GCP VM
+        run: |
+          REPO_NAME=$(basename $(git rev-parse --show-toplevel))
+          gcloud compute scp --recurse ../$REPO_NAME ghaction@$INSTANCE_NAME:/mnt/btrfs/$REPO_NAME --zone=us-central1-a --ssh-key-file=~/.ssh/id_rsa
+
+      - name: List files on VM
+        run: |
+          gcloud compute ssh ghaction@$INSTANCE_NAME --zone=us-central1-a \
+            --ssh-key-file=~/.ssh/id_rsa \
+            --command="ls -la /mnt/btrfs/$REPO_NAME"
+
+      - name: Add Cargo to PATH
+        run: |
+          gcloud compute ssh ghaction@$INSTANCE_NAME --zone=us-central1-a \
+              --command="echo 'source $HOME/.cargo/env' >> $HOME/.bashrc"
+
+      - name: Run Tests as New User
+        run: |
+          gcloud compute ssh ghaction@$INSTANCE_NAME --zone=us-central1-a \
+            --ssh-key-file=~/.ssh/id_rsa \
+            --command="cd /mnt/btrfs/$REPO_NAME && cargo test --release"
+
+      # Cleanup
+      - name: Delete GCP VM if exists
+        if: always()
+        run: |
+          if gcloud compute instances describe $INSTANCE_NAME --zone=us-central1-a > /dev/null 2>&1; then
+            gcloud compute instances delete $INSTANCE_NAME --zone=us-central1-a --quiet
+          else
+            echo "VM does not exist. Skipping deletion."
+          fi
+
+      - name: Delete GCP Disk if exists
+        if: always()
+        run: |
+          if gcloud compute disks describe $DISK_NAME --zone=us-central1-a > /dev/null 2>&1; then
+            gcloud compute disks delete $DISK_NAME --zone=us-central1-a --quiet
+          else
+            echo "Disk does not exist. Skipping deletion."
+          fi
