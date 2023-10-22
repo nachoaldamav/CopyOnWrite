@@ -88,21 +88,23 @@ jobs:
 
       - name: List files on VM
         run: |
+          REPO_NAME=$(basename $(git rev-parse --show-toplevel))
           gcloud compute ssh ghaction@$INSTANCE_NAME --zone=us-central1-a \
             --ssh-key-file=~/.ssh/id_rsa \
-            --command="ls -la /mnt/btrfs/code"
+            --command="ls -la /mnt/btrfs/code/$REPO_NAME"
 
-      - name: Add Cargo to PATH
+      - name: Install Rust
         run: |
-            gcloud compute ssh ghaction@$INSTANCE_NAME --zone=us-central1-a \
-            --command='echo "source $HOME/.cargo/env" >> $HOME/.bashrc'
-          
+          gcloud compute ssh ghaction@$INSTANCE_NAME --zone=us-central1-a \
+            --ssh-key-file=~/.ssh/id_rsa \
+            --command="curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && source ~/.cargo/env"
 
       - name: Run Tests as New User
         run: |
+          REPO_NAME=$(basename $(git rev-parse --show-toplevel))
           gcloud compute ssh ghaction@$INSTANCE_NAME --zone=us-central1-a \
             --ssh-key-file=~/.ssh/id_rsa \
-            --command="cd /mnt/btrfs/code && cargo test --release"
+            --command="cd /mnt/btrfs/code/$REPO_NAME && cargo test --release"
 
       # Cleanup
       - name: Delete GCP VM if exists

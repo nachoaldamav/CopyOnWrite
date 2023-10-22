@@ -6,12 +6,6 @@ sudo apt-get update
 sudo apt-get install -y build-essential git curl
 echo "::endgroup::"
 
-# Install Rust and Cargo
-echo "::group::Install Rust and Cargo"
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-source $HOME/.cargo/env
-echo "::endgroup::"
-
 # Prepare Disk
 echo "::group::Prepare Disk"
 sudo mkdir -p /mnt/btrfs
