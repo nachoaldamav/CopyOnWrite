@@ -38,24 +38,24 @@ jobs:
 
       - name: Create GCP VM with Spot provisioning
         run: |
-          gcloud compute instances create $INSTANCE_NAME \
-          --project=${{ secrets.GCP_PROJECT_ID }} \
-          --zone=us-central1-a \
-          --machine-type=e2-medium \
-          --network-interface=network-tier=PREMIUM,stack-type=IPV4_ONLY,subnet=default \
-          --no-restart-on-failure \
-          --maintenance-policy=TERMINATE \
-          --provisioning-model=SPOT \
-          --instance-termination-action=DELETE \
-          --service-account=${{ secrets.GCP_SERVICE_ACCOUNT }} \
-          --scopes=https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring.write,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append \
-          --create-disk=auto-delete=yes,boot=yes,device-name=$INSTANCE_NAME,image=projects/windows-cloud/global/images/windows-server-2022-dc-v20231011,mode=rw,size=50,type=projects/${{ secrets.GCP_PROJECT_ID }}/zones/us-central1-a/diskTypes/pd-balanced \
-          --no-shielded-secure-boot \
-          --shielded-vtpm \
-          --shielded-integrity-monitoring \
-          --labels=goog-ec-src=vm_add-gcloud \
-          --reservation-affinity=any \
-          --create-disk=size=10GB,device-name=$DISK_NAME,mode=rw,type=projects/${{ secrets.GCP_PROJECT_ID }}/zones/us-central1-a/diskTypes/pd-balanced \
+          gcloud compute instances create $INSTANCE_NAME `
+          --project=${{ secrets.GCP_PROJECT_ID }} `
+          --zone=us-central1-a `
+          --machine-type=e2-medium `
+          --network-interface=network-tier=PREMIUM,stack-type=IPV4_ONLY,subnet=default `
+          --no-restart-on-failure `
+          --maintenance-policy=TERMINATE `
+          --provisioning-model=SPOT `
+          --instance-termination-action=DELETE `
+          --service-account=${{ secrets.GCP_SERVICE_ACCOUNT }} `
+          --scopes=https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring.write,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append `
+          --create-disk=auto-delete=yes,boot=yes,device-name=$INSTANCE_NAME,image=projects/windows-cloud/global/images/windows-server-2022-dc-v20231011,mode=rw,size=50,type=projects/${{ secrets.GCP_PROJECT_ID }}/zones/us-central1-a/diskTypes/pd-balanced `
+          --no-shielded-secure-boot `
+          --shielded-vtpm `
+          --shielded-integrity-monitoring `
+          --labels=goog-ec-src=vm_add-gcloud `
+          --reservation-affinity=any `
+          --create-disk=size=10GB,device-name=$DISK_NAME,mode=rw,type=projects/${{ secrets.GCP_PROJECT_ID }}/zones/us-central1-a/diskTypes/pd-balanced `
           --metadata sysprep-specialize-script-cmd="googet -noconfirm=true install google-compute-engine-ssh",enable-windows-ssh=TRUE
 
       - name: Restart VM to apply SSH changes
