@@ -87,14 +87,14 @@ jobs:
       - name: Copy Repo to GCP VM
         run: |
           REPO_NAME=$(basename $(git rev-parse --show-toplevel))
-          gcloud compute scp --recurse ../$REPO_NAME ghaction@$INSTANCE_NAME:/mnt/btrfs/code --zone=us-central1-a --ssh-key-file=~/.ssh/id_rsa
+          gcloud compute scp --recurse ../$REPO_NAME ghaction@$INSTANCE_NAME:/mnt/${{ matrix.fs }}/code --zone=us-central1-a --ssh-key-file=~/.ssh/id_rsa
 
       - name: List files on VM
         run: |
           REPO_NAME=$(basename $(git rev-parse --show-toplevel))
           gcloud compute ssh ghaction@$INSTANCE_NAME --zone=us-central1-a \
             --ssh-key-file=~/.ssh/id_rsa \
-            --command="ls -la /mnt/btrfs/code/$REPO_NAME"
+            --command="ls -la /mnt/${{ matrix.fs }}/code/$REPO_NAME"
 
       - name: Install Rust
         run: |
@@ -107,7 +107,7 @@ jobs:
           REPO_NAME=$(basename $(git rev-parse --show-toplevel))
           gcloud compute ssh ghaction@$INSTANCE_NAME --zone=us-central1-a \
             --ssh-key-file=~/.ssh/id_rsa \
-            --command="source ~/.cargo/env && cd /mnt/btrfs/code/$REPO_NAME && cargo test"
+            --command="source ~/.cargo/env && cd /mnt/${{ matrix.fs }}/code/$REPO_NAME && cargo test"
 
       # Cleanup
       - name: Delete GCP VM if exists
