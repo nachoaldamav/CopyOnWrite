@@ -9,7 +9,9 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
+    strategy:
+        matrix:
+          fs: [ 'btrfs', 'xfs' ]
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -74,9 +76,10 @@ jobs:
               fi
           done
 
-      - name: Run init-script.sh
+      - name: Run init script
         run: |
-          SCRIPT_CONTENT=$(cat init-script.sh)
+          SCRIPT_PATH=scripts/linux-${{ matrix.fs }}.sh
+          SCRIPT_CONTENT=$(cat $SCRIPT_PATH)
             gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a \
                 --ssh-key-file=~/.ssh/id_rsa \
                 --command="echo '$SCRIPT_CONTENT' > init-script.sh && chmod +x init-script.sh && ./init-script.sh"
@@ -104,7 +107,7 @@ jobs:
           REPO_NAME=$(basename $(git rev-parse --show-toplevel))
           gcloud compute ssh ghaction@$INSTANCE_NAME --zone=us-central1-a \
             --ssh-key-file=~/.ssh/id_rsa \
-            --command="source ~/.cargo/env && cd /mnt/btrfs/code/$REPO_NAME && cargo test --release"
+            --command="source ~/.cargo/env && cd /mnt/btrfs/code/$REPO_NAME && cargo test"
 
       # Cleanup
       - name: Delete GCP VM if exists
