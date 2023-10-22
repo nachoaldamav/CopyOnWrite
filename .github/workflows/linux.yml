@@ -1,4 +1,4 @@
-name: Deploy and Run Tests on GCP VM
+name: E2E Linux (Google Cloud)
 
 on:
   push:
