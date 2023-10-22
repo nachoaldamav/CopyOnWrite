@@ -88,12 +88,12 @@ jobs:
     - name: Create the repo directory on the disk
       run: |
         gcloud compute ssh ghaction@$INSTANCE_NAME --zone=us-central1-a \
-          --command="sudo mkdir -p /mnt/btrfs/$REPO_NAME"
+          --command="sudo mkdir -p /mnt/btrfs/$REPO_NAME && sudo chown -R ghaction:ghaction /mnt/btrfs/$REPO_NAME"
       
     - name: Copy Repo to GCP VM
       run: |
         REPO_NAME=$(basename $(git rev-parse --show-toplevel))
-        gcloud compute scp --recurse ../$REPO_NAME $INSTANCE_NAME:/mnt/btrfs/$REPO_NAME --zone=us-central1-a
+        gcloud compute scp --recurse ../$REPO_NAME $INSTANCE_NAME:/mnt/btrfs/$REPO_NAME --zone=us-central1-a --ssh-key-file=~/.ssh/id_rsa
         
     - name: Run Tests as New User
       run: |
