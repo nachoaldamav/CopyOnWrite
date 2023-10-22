@@ -70,12 +70,11 @@ jobs:
             ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N ""
             echo "SSH_PUBLIC_KEY=$(cat ~/.ssh/id_rsa.pub)" >> $GITHUB_ENV
 
-    # Prepare and SSH into VM
     - name: SSH and Prepare Disk and User
       run: |
         gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a \
-          --command="sudo mkdir -p /mnt/btrfs && sudo mkfs.btrfs /dev/sdb && sudo mount /dev/sdb /mnt/btrfs && sudo useradd -m ghaction && sudo mkdir -p ~ghaction/.ssh && echo '${{ env.SSH_PUBLIC_KEY }}' >> ~ghaction/.ssh/authorized_keys && sudo chown -R ghaction:ghaction ~ghaction/.ssh && chmod 700 ~ghaction/.ssh && chmod 600 ~ghaction/.ssh/authorized_keys && sudo chown ghaction:ghaction /mnt/btrfs"
-
+        --command="echo '$(cat ~/id_rsa.pub)' | sudo tee -a ~ghaction/.ssh/authorized_keys"
+      
     - name: Copy Repo to GCP VM
       run: |
         REPO_NAME=$(basename $(git rev-parse --show-toplevel))
