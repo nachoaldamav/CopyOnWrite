@@ -61,7 +61,6 @@ jobs:
           --shielded-vtpm \
           --shielded-integrity-monitoring \
           --reservation-affinity=any \
-          --metadata-from-file startup-script=init-script.sh \
           --metadata=ssh-keys="ghaction:${{ env.SSH_PUBLIC_KEY }}"
 
       - name: Wait for VM to be ready
@@ -74,6 +73,13 @@ jobs:
               sleep 2
               fi
           done
+
+      - name: Run init-script.sh
+        run: |
+          SCRIPT_CONTENT=$(cat init-script.sh)
+            gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a \
+                --ssh-key-file=~/.ssh/id_rsa \
+                --command="echo '$SCRIPT_CONTENT' > init-script.sh && chmod +x init-script.sh && ./init-script.sh"
 
       - name: Copy Repo to GCP VM
         run: |
