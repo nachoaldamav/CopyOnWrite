@@ -65,15 +65,15 @@ jobs:
 
       - name: Execute init script
         run: |
-            SCRIPT_PATH="./scripts/windows.ps1"
+            SCRIPT_PATH="./scripts/windows.cmd"
             SCRIPT_CONTENT=$(cat $SCRIPT_PATH)
-            # Invoke the PWS Script through the SSH using PowerShell
-            gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="powershell -Command \"& { $SCRIPT_CONTENT }\""
-            
+            # Execute the script on the VM
+            gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="$SCRIPT_CONTENT"
+
       - name: Copy the repo
         run: |
             REPO_NAME=$(basename $(git rev-parse --show-toplevel))
-            gcloud compute scp --recurse --zone=us-central1-a ../$REPO_NAME $INSTANCE_NAME:~/Z:/code/
+            gcloud compute scp --recurse --zone=us-central1-a ../$REPO_NAME $INSTANCE_NAME:Z:/code/
     
       - name: Run tests
         run: |
