@@ -85,8 +85,7 @@ jobs:
 
       - name: Create repo directory on VM
         run: |
-            gcloud compute ssh ghaction@$INSTANCE_NAME --zone=us-central1-a \
-                --ssh-key-file=~/.ssh/id_rsa \
+            gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a \
                 --command="mkdir -p /mnt/btrfs/code && chmod 777 /mnt/btrfs/code"
 
       - name: Copy Repo to GCP VM
