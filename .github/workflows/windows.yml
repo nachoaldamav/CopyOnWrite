@@ -1,0 +1,135 @@
+name: Deploy and Run Tests on GCP VM
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  windows-e2e:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        fs: ['ReFS']
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Authenticate with Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+      - name: Setup GCP environment
+        uses: google-github-actions/setup-gcloud@v1
+
+      - name: Generate random instance and disk name
+        run: |
+          INSTANCE_UUID=$(uuidgen | cut -d '-' -f1)
+          INSTANCE_NAME="vm-$INSTANCE_UUID"
+          DISK_NAME="$INSTANCE_NAME-disk"
+          echo "INSTANCE_NAME=$INSTANCE_NAME" >> $GITHUB_ENV
+          echo "DISK_NAME=$DISK_NAME" >> $GITHUB_ENV
+
+      - name: Set default project
+        run: |
+          gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Create GCP VM with Spot provisioning
+        run: |
+          gcloud compute instances create $INSTANCE_NAME \
+          --project=${{ secrets.GCP_PROJECT_ID }} \
+          --zone=us-central1-a \
+          --machine-type=e2-medium \
+          --network-interface=network-tier=PREMIUM,stack-type=IPV4_ONLY,subnet=default \
+          --no-restart-on-failure \
+          --maintenance-policy=TERMINATE \
+          --provisioning-model=SPOT \
+          --instance-termination-action=DELETE \
+          --service-account=${{ secrets.GCP_SERVICE_ACCOUNT }} \
+          --scopes=https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring.write,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append \
+          --create-disk=auto-delete=yes,boot=yes,device-name=$INSTANCE_NAME,image=projects/windows-cloud/global/images/windows-server-2022-dc-v20231011,mode=rw,size=50,type=projects/${{ secrets.GCP_PROJECT_ID }}/zones/us-central1-a/diskTypes/pd-balanced \
+          --no-shielded-secure-boot \
+          --shielded-vtpm \
+          --shielded-integrity-monitoring \
+          --labels=goog-ec-src=vm_add-gcloud \
+          --reservation-affinity=any \
+          --create-disk=size=10GB,device-name=$DISK_NAME,mode=rw,type=projects/${{ secrets.GCP_PROJECT_ID }}/zones/us-central1-a/diskTypes/pd-balanced \
+          --metadata sysprep-specialize-script-cmd="googet -noconfirm=true install google-compute-engine-ssh",enable-windows-ssh=TRUE
+
+      - name: Restart VM to apply SSH changes
+        run: |
+          gcloud compute instances stop $INSTANCE_NAME --zone=us-central1-a
+          gcloud compute instances start $INSTANCE_NAME --zone=us-central1-a
+
+      - name: Wait for VM to be ready
+        run: |
+          for i in {1..30}; do
+              if gcloud compute ssh $INSTANCE_NAME --command="echo ready" --zone=us-central1-a; then
+              break
+              else
+              echo "Retrying ($i)..."
+              sleep 2
+              fi
+          done
+
+      - name: Regenerate Windows Password
+        run: |
+          # Reset the Windows password and capture the output
+          OUTPUT=$(gcloud compute reset-windows-password $INSTANCE_NAME --quiet)
+
+          # Extract the password from the output
+          PASSWORD=$(echo "$OUTPUT" | grep "password:" | awk '{print $2}')
+
+          # Extract the username
+          USERNAME=$(echo "$OUTPUT" | grep "username:" | awk '{print $2}')
+
+          # Use GitHub Action's `set-output` to pass values between steps
+          # We will mask these values so that they don't appear in logs
+          echo "::add-mask::$PASSWORD"
+          echo "::add-mask::$USERNAME"
+
+          # Setting them as output variables (optional, based on further usage)
+          echo "WIN_PASSWORD=$PASSWORD" >> $GITHUB_ENV
+          echo "WIN_USERNAME=$USERNAME" >> $GITHUB_ENV
+
+      - name: Get VM External IP
+        run: |
+          EXTERNAL_IP=$(gcloud compute instances describe $INSTANCE_NAME --zone=us-central1-a --format='get(networkInterfaces[0].accessConfigs[0].natIP)')
+          echo "EXTERNAL_IP=$EXTERNAL_IP" >> $GITHUB_ENV
+
+      - name: Execute init script
+        run: |
+            SCRIPT_PATH="./scripts/windows.ps1"
+            SCRIPT_CONTENT=$(cat $SCRIPT_PATH)
+            # Invoke the PWS Script through the IP address using PowerShell
+            Invoke-Command -ComputerName $EXTERNAL_IP -ScriptBlock $SCRIPT_CONTENT -Credential (New-Object System.Management.Automation.PSCredential($WIN_USERNAME, (ConvertTo-SecureString -String $WIN_PASSWORD -AsPlainText -Force)))
+    
+      - name: Copy the repo
+        run: |
+            REPO_NAME=$(basename $(git rev-parse --show-toplevel))
+            gcloud compute scp --recurse --zone=us-central1-a ../$REPO_NAME $INSTANCE_NAME:~/Z:/code/
+    
+      - name: Run tests
+        run: |
+            gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="cd Z:/code/$REPO_NAME && cargo test"
+      
+        # Cleanup
+      - name: Delete GCP VM if exists
+        if: always()
+        run: |
+            if gcloud compute instances describe $INSTANCE_NAME --zone=us-central1-a > /dev/null 2>&1; then
+            gcloud compute instances delete $INSTANCE_NAME --zone=us-central1-a --quiet
+            else
+            echo "VM does not exist. Skipping deletion."
+            fi
+
+      - name: Delete GCP Disk if exists
+        if: always()
+        run: |
+            if gcloud compute disks describe $DISK_NAME --zone=us-central1-a > /dev/null 2>&1; then
+            gcloud compute disks delete $DISK_NAME --zone=us-central1-a --quiet
+            else
+            echo "Disk does not exist. Skipping deletion."
+            fi
