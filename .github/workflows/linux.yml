@@ -104,7 +104,7 @@ jobs:
           REPO_NAME=$(basename $(git rev-parse --show-toplevel))
           gcloud compute ssh ghaction@$INSTANCE_NAME --zone=us-central1-a \
             --ssh-key-file=~/.ssh/id_rsa \
-            --command="cd /mnt/btrfs/code/$REPO_NAME && cargo test --release"
+            --command="source ~/.cargo/env && cd /mnt/btrfs/code/$REPO_NAME && cargo test --release"
 
       # Cleanup
       - name: Delete GCP VM if exists
