@@ -8,7 +8,7 @@ on:
 
 jobs:
   windows-e2e:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         fs: ['ReFS']
@@ -26,11 +26,11 @@ jobs:
 
       - name: Generate random instance and disk name
         run: |
-          $INSTANCE_UUID = [guid]::NewGuid().ToString().Split('-')[0]
-          $INSTANCE_NAME = "vm-$INSTANCE_UUID"
-          $DISK_NAME = "$INSTANCE_NAME-disk"
-          echo "INSTANCE_NAME=$INSTANCE_NAME" >> $env:GITHUB_ENV
-          echo "DISK_NAME=$DISK_NAME" >> $env:GITHUB_ENV
+          INSTANCE_UUID=$(uuidgen | cut -d'-' -f1)
+          INSTANCE_NAME="vm-$INSTANCE_UUID"
+          DISK_NAME="$INSTANCE_NAME-disk"
+          echo "INSTANCE_NAME=$INSTANCE_NAME" >> $GITHUB_ENV
+          echo "DISK_NAME=$DISK_NAME" >> $GITHUB_ENV
 
       - name: Set default project
         run: |
@@ -38,19 +38,19 @@ jobs:
 
       - name: Create GCP VM with Spot provisioning
         run: |
-          gcloud compute instances create $INSTANCE_NAME `
-          --project=${{ secrets.GCP_PROJECT_ID }} `
-          --zone=us-central1-a `
-          --machine-type=e2-small `
-          --no-restart-on-failure `
-          --maintenance-policy=TERMINATE `
-          --provisioning-model=SPOT `
-          --instance-termination-action=DELETE `
-          --shielded-secure-boot `
-          --shielded-vtpm `
-          --create-disk=auto-delete=yes,device-name=${INSTANCE_NAME},image=projects/windows-cloud/global/images/windows-server-2022-dc-v20231011,mode=rw,size=50,type=projects/${{ secrets.GCP_PROJECT_ID }}/zones/us-central1-a/diskTypes/pd-balanced `
-          --create-disk=size=10GB,device-name=${DISK_NAME},mode=rw,type=projects/${{ secrets.GCP_PROJECT_ID }}/zones/us-central1-a/diskTypes/pd-balanced `
-          --metadata sysprep-specialize-script-cmd="googet -noconfirm=true install google-compute-engine-ssh",enable-windows-ssh=TRUE
+          gcloud compute instances create $INSTANCE_NAME \
+            --project=${{ secrets.GCP_PROJECT_ID }} \
+            --zone=us-central1-a \
+            --machine-type=e2-small \
+            --no-restart-on-failure \
+            --maintenance-policy=TERMINATE \
+            --provisioning-model=SPOT \
+            --instance-termination-action=DELETE \
+            --shielded-secure-boot \
+            --shielded-vtpm \
+            --create-disk=auto-delete=yes,device-name=$INSTANCE_NAME,image=projects/windows-cloud/global/images/windows-server-2022-dc-v20231011,mode=rw,size=50,type=projects/${{ secrets.GCP_PROJECT_ID }}/zones/us-central1-a/diskTypes/pd-balanced \
+            --create-disk=size=10GB,device-name=$DISK_NAME,mode=rw,type=projects/${{ secrets.GCP_PROJECT_ID }}/zones/us-central1-a/diskTypes/pd-balanced \
+            --metadata sysprep-specialize-script-cmd="googet -noconfirm=true install google-compute-engine-ssh",enable-windows-ssh=TRUE
 
       - name: Restart VM to apply SSH changes
         run: |
@@ -109,11 +109,11 @@ jobs:
         run: |
             gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="cd Z:/code/$REPO_NAME && cargo test"
       
-        # Cleanup
+      # Cleanup
       - name: Delete GCP VM if exists
         if: always()
         run: |
-          if (gcloud compute instances describe $INSTANCE_NAME --zone=us-central1-a) -ne $null; then
+          if gcloud compute instances describe $INSTANCE_NAME --zone=us-central1-a > /dev/null 2>&1; then
             gcloud compute instances delete $INSTANCE_NAME --zone=us-central1-a --quiet
           else
             echo "VM does not exist. Skipping deletion."
@@ -122,7 +122,7 @@ jobs:
       - name: Delete GCP Disk if exists
         if: always()
         run: |
-          if (gcloud compute disks describe $DISK_NAME --zone=us-central1-a) -ne $null; then
+          if gcloud compute disks describe $DISK_NAME --zone=us-central1-a > /dev/null 2>&1; then
             gcloud compute disks delete $DISK_NAME --zone=us-central1-a --quiet
           else
             echo "Disk does not exist. Skipping deletion."
