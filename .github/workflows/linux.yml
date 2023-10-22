@@ -7,11 +7,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
+  linux-e2e:
     runs-on: ubuntu-latest
     strategy:
-        matrix:
-          fs: [ 'btrfs', 'xfs' ]
+      matrix:
+        fs: ['btrfs', 'xfs']
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -127,3 +127,97 @@ jobs:
           else
             echo "Disk does not exist. Skipping deletion."
           fi
+
+  windows-e2e:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Authenticate with Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+      - name: Setup GCP environment
+        uses: google-github-actions/setup-gcloud@v1
+
+      - name: Generate random instance and disk name
+        run: |
+          INSTANCE_UUID=$(uuidgen | cut -d '-' -f1)
+          INSTANCE_NAME="vm-$INSTANCE_UUID"
+          DISK_NAME="$INSTANCE_NAME-disk"
+          echo "INSTANCE_NAME=$INSTANCE_NAME" >> $GITHUB_ENV
+          echo "DISK_NAME=$DISK_NAME" >> $GITHUB_ENV
+
+      - name: Set default project
+        run: |
+          gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Generate SSH key pair
+        run: |
+          ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N ""
+
+      - name: Set SSH public key
+        run: |
+          echo "SSH_PUBLIC_KEY=$(cat ~/.ssh/id_rsa.pub)" >> $GITHUB_ENV
+
+      - name: Create GCP VM with Spot provisioning
+        run: |
+          gcloud compute instances create $INSTANCE_NAME \
+          --project=${{ secrets.GCP_PROJECT_ID }} \
+          --zone=us-central1-a \
+          --machine-type=e2-medium \
+          --network-interface=network-tier=PREMIUM,stack-type=IPV4_ONLY,subnet=default \
+          --no-restart-on-failure \
+          --maintenance-policy=TERMINATE \
+          --provisioning-model=SPOT \
+          --instance-termination-action=DELETE \
+          --max-run-duration=3600s \
+          --service-account=${{ secrets.GCP_SERVICE_ACCOUNT }} \
+          --scopes=https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring.write,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append \
+          --create-disk=auto-delete=yes,boot=yes,device-name=$INSTANCE_NAME,image=projects/windows-cloud/global/images/windows-server-2022-dc-v20231011,mode=rw,size=50,type=projects/${{ secrets.GCP_PROJECT_ID }}/zones/us-central1-a/diskTypes/pd-balanced \
+          --no-shielded-secure-boot \
+          --shielded-vtpm \
+          --shielded-integrity-monitoring \
+          --labels=goog-ec-src=vm_add-gcloud \
+          --reservation-affinity=any \
+          --create-disk=size=10GB,device-name=$DISK_NAME,mode=rw,type=projects/${{ secrets.GCP_PROJECT_ID }}/zones/us-central1-a/diskTypes/pd-balanced
+
+      - name: Wait for VM to be ready
+        run: |
+          for i in {1..30}; do
+              if gcloud compute ssh $INSTANCE_NAME --command="echo ready" --zone=us-central1-a; then
+              break
+              else
+              echo "Retrying ($i)..."
+              sleep 2
+              fi
+          done
+
+      - name: Run init script
+        run: |
+          SCRIPT_PATH=scripts/windows.sh
+          SCRIPT_CONTENT=$(cat $SCRIPT_PATH)
+            gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a \
+                --ssh-key-file=~/.ssh/id_rsa \
+                --command="echo '$SCRIPT_CONTENT' > init-script.ps1 && ./init-script.ps1"
+
+      - name: Install Rust on Windows
+        run: |
+          gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a \
+          --ssh-key-file=~/.ssh/id_rsa \
+          --command="powershell -Command Invoke-WebRequest -Uri 'https://win.rustup.rs/' -OutFile 'rustup-init.exe'; .\rustup-init.exe -y; [Environment]::SetEnvironmentVariable('Path', [Environment]::GetEnvironmentVariable('Path',[System.EnvironmentVariableTarget]::User) + ';C:\Users\$env:USERNAME\.cargo\bin', [System.EnvironmentVariableTarget]::User)"
+
+      - name: Copy Repo to GCP VM
+        run: |
+            REPO_NAME=$(basename $(git rev-parse --show-toplevel))
+            gcloud compute scp --recurse ../$REPO_NAME ghaction@$INSTANCE_NAME:Z:/code --zone=us-central1-a --ssh-key-file=~/.ssh/id_rsa
+    
+      - name: Run tests
+        run: |
+          REPO_NAME=$(basename $(git rev-parse --show-toplevel))
+          gcloud compute ssh ghaction@$INSTANCE_NAME --zone=us-central1-a \
+            --ssh-key-file=~/.ssh/id_rsa \
+            --command="cd Z:/code/$REPO_NAME && cargo test"
