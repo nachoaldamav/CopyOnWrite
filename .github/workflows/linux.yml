@@ -76,7 +76,7 @@ jobs:
     - name: SSH and Prepare Disk and User
       run: |
         gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a \
-          --command="sudo mkdir -p /mnt/btrfs && sudo mkfs.btrfs /dev/sdb && sudo mount /dev/sdb /mnt/btrfs && sudo useradd -m newuser && mkdir ~newuser/.ssh && cat ~/id_rsa.pub >> ~newuser/.ssh/authorized_keys && sudo chown -R newuser:newuser ~newuser/.ssh && chmod 700 ~newuser/.ssh && chmod 600 ~newuser/.ssh/authorized_keys && sudo chown newuser:newuser /mnt/btrfs"
+          --command="sudo mkdir -p /mnt/btrfs && sudo mkfs.btrfs /dev/sdb && sudo mount /dev/sdb /mnt/btrfs && sudo useradd -m ghaction && mkdir ~ghaction/.ssh && cat ~/id_rsa.pub >> ~ghaction/.ssh/authorized_keys && sudo chown -R ghaction:ghaction ~ghaction/.ssh && chmod 700 ~ghaction/.ssh && chmod 600 ~ghaction/.ssh/authorized_keys && sudo chown ghaction:ghaction /mnt/btrfs"
 
     - name: Copy Repo to GCP VM
       run: |
@@ -85,7 +85,7 @@ jobs:
         
     - name: Run Tests as New User
       run: |
-        gcloud compute ssh newuser@$INSTANCE_NAME --zone=us-central1-a \
+        gcloud compute ssh ghaction@$INSTANCE_NAME --zone=us-central1-a \
           --ssh-key-file=~/.ssh/id_rsa \
           --command="cd /mnt/btrfs/$REPO_NAME && cargo test --release"
     
