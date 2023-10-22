@@ -63,38 +63,13 @@ jobs:
               fi
           done
 
-      - name: Regenerate Windows Password
-        run: |
-          # Reset the Windows password and capture the output
-          OUTPUT=$(gcloud compute reset-windows-password $INSTANCE_NAME --quiet --zone=us-central1-a)
-
-          # Extract the password from the output
-          PASSWORD=$(echo "$OUTPUT" | grep "password:" | awk '{print $2}')
-
-          # Extract the username
-          USERNAME=$(echo "$OUTPUT" | grep "username:" | awk '{print $2}')
-
-          # Use GitHub Action's `set-output` to pass values between steps
-          # We will mask these values so that they don't appear in logs
-          echo "::add-mask::$PASSWORD"
-          echo "::add-mask::$USERNAME"
-
-          # Setting them as output variables (optional, based on further usage)
-          echo "WIN_PASSWORD=$PASSWORD" >> $GITHUB_ENV
-          echo "WIN_USERNAME=$USERNAME" >> $GITHUB_ENV
-
-      - name: Get VM External IP
-        run: |
-          EXTERNAL_IP=$(gcloud compute instances describe $INSTANCE_NAME --zone=us-central1-a --format='get(networkInterfaces[0].accessConfigs[0].natIP)')
-          echo "EXTERNAL_IP=$EXTERNAL_IP" >> $GITHUB_ENV
-
       - name: Execute init script
         run: |
             SCRIPT_PATH="./scripts/windows.ps1"
             SCRIPT_CONTENT=$(cat $SCRIPT_PATH)
-            # Invoke the PWS Script through the IP address using PowerShell
-            Invoke-Command -ComputerName $EXTERNAL_IP -ScriptBlock $SCRIPT_CONTENT -Credential (New-Object System.Management.Automation.PSCredential($WIN_USERNAME, (ConvertTo-SecureString -String $WIN_PASSWORD -AsPlainText -Force)))
-    
+            # Invoke the PWS Script through the SSH using PowerShell
+            gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="powershell -Command \"& { $SCRIPT_CONTENT }\""
+            
       - name: Copy the repo
         run: |
             REPO_NAME=$(basename $(git rev-parse --show-toplevel))
