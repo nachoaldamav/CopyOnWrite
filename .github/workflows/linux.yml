@@ -84,7 +84,7 @@ jobs:
       - name: Copy Repo to GCP VM
         run: |
           REPO_NAME=$(basename $(git rev-parse --show-toplevel))
-          gcloud compute scp --recurse ./ ghaction@$INSTANCE_NAME:/mnt/btrfs/code --zone=us-central1-a --ssh-key-file=~/.ssh/id_rsa
+          gcloud compute scp --recurse ../{REPO_NAME} ghaction@$INSTANCE_NAME:/mnt/btrfs/code --zone=us-central1-a --ssh-key-file=~/.ssh/id_rsa
 
       - name: List files on VM
         run: |
