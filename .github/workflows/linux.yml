@@ -73,7 +73,7 @@ jobs:
     - name: SSH and Prepare Disk and User
       run: |
         gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a \
-        --command="echo '$(cat ~/id_rsa.pub)' | sudo tee -a ~ghaction/.ssh/authorized_keys"
+        --command="echo '$(cat ~/id_rsa.pub)' | sudo tee -a /home/ghaction/.ssh/authorized_keys"
       
     - name: Copy Repo to GCP VM
       run: |
