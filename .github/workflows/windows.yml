@@ -26,11 +26,11 @@ jobs:
 
       - name: Generate random instance and disk name
         run: |
-          INSTANCE_UUID=$(uuidgen | cut -d '-' -f1)
-          INSTANCE_NAME="vm-$INSTANCE_UUID"
-          DISK_NAME="$INSTANCE_NAME-disk"
-          echo "INSTANCE_NAME=$INSTANCE_NAME" >> $GITHUB_ENV
-          echo "DISK_NAME=$DISK_NAME" >> $GITHUB_ENV
+          $INSTANCE_UUID = [guid]::NewGuid().ToString().Split('-')[0]
+          $INSTANCE_NAME = "vm-$INSTANCE_UUID"
+          $DISK_NAME = "$INSTANCE_NAME-disk"
+          echo "INSTANCE_NAME=$INSTANCE_NAME" >> $env:GITHUB_ENV
+          echo "DISK_NAME=$DISK_NAME" >> $env:GITHUB_ENV
 
       - name: Set default project
         run: |
@@ -119,17 +119,17 @@ jobs:
       - name: Delete GCP VM if exists
         if: always()
         run: |
-            if gcloud compute instances describe $INSTANCE_NAME --zone=us-central1-a > /dev/null 2>&1; then
+          if (gcloud compute instances describe $INSTANCE_NAME --zone=us-central1-a) -ne $null; then
             gcloud compute instances delete $INSTANCE_NAME --zone=us-central1-a --quiet
-            else
+          else
             echo "VM does not exist. Skipping deletion."
-            fi
+          fi
 
       - name: Delete GCP Disk if exists
         if: always()
         run: |
-            if gcloud compute disks describe $DISK_NAME --zone=us-central1-a > /dev/null 2>&1; then
+          if (gcloud compute disks describe $DISK_NAME --zone=us-central1-a) -ne $null; then
             gcloud compute disks delete $DISK_NAME --zone=us-central1-a --quiet
-            else
+          else
             echo "Disk does not exist. Skipping deletion."
-            fi
+          fi
