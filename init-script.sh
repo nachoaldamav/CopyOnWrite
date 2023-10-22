@@ -13,3 +13,4 @@ sudo mkdir -p /mnt/btrfs
 sudo mount /dev/sdb /mnt/btrfs
 sudo mkdir /home/ghaction/.ssh
 sudo chown ghaction:ghaction /home/ghaction/.ssh
+sudo mkdir /home/ghaction/.ssh/authorized_keys
