@@ -83,11 +83,6 @@ jobs:
               fi
           done
 
-      - name: Create repo directory on VM
-        run: |
-            gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a \
-                --command="mkdir -p /mnt/btrfs/code && chmod 777 /mnt/btrfs/code"
-
       - name: Copy Repo to GCP VM
         run: |
           REPO_NAME=$(basename $(git rev-parse --show-toplevel))

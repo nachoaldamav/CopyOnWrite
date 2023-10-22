@@ -25,3 +25,7 @@ sudo chmod 600 ~ghaction/.ssh/authorized_keys
 
 # Ensure that the user has access to the btrfs volume
 sudo chown ghaction:ghaction /mnt/btrfs
+
+# Create "code" directory in the btrfs volume
+sudo mkdir -p /mnt/btrfs/code
+sudo chown ghaction:ghaction /mnt/btrfs/code
