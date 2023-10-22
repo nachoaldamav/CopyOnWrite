@@ -71,21 +71,21 @@ jobs:
     
     - name: Upload public key to VM
       run: |
-        gcloud compute scp ~/.ssh/id_rsa.pub $INSTANCE_NAME:~/
+        gcloud compute scp ~/.ssh/id_rsa.pub $INSTANCE_NAME:~/ --zone=us-central1-a
 
     - name: SSH and Prepare Disk and User
       run: |
-        gcloud compute ssh $INSTANCE_NAME \
+        gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a \
           --command="sudo mkfs.btrfs /dev/sdb && sudo mount /dev/sdb /mnt/btrfs && sudo useradd -m newuser && mkdir ~newuser/.ssh && cat ~/id_rsa.pub >> ~newuser/.ssh/authorized_keys && sudo chown -R newuser:newuser ~newuser/.ssh && chmod 700 ~newuser/.ssh && chmod 600 ~newuser/.ssh/authorized_keys && sudo chown newuser:newuser /mnt/btrfs"
 
     - name: Copy Repo to GCP VM
       run: |
         REPO_NAME=$(basename $(git rev-parse --show-toplevel))
-        gcloud compute scp --recurse ../$REPO_NAME $INSTANCE_NAME:/mnt/btrfs/
+        gcloud compute scp --recurse ../$REPO_NAME $INSTANCE_NAME:/mnt/btrfs/ --zone=us-central1-a
         
     - name: Run Tests as New User
       run: |
-        gcloud compute ssh newuser@$INSTANCE_NAME \
+        gcloud compute ssh newuser@$INSTANCE_NAME --zone=us-central1-a \
           --ssh-key-file=~/.ssh/id_rsa \
           --command="cd /mnt/btrfs/$REPO_NAME && cargo test --release"
     
