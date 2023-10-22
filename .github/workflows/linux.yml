@@ -67,14 +67,6 @@ jobs:
 
     - name: Generate SSH key pair
       run: |
-        ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N ""
-    
-    - name: Upload public key to VM
-      run: |
-        gcloud compute scp ~/.ssh/id_rsa.pub $INSTANCE_NAME:~/ --zone=us-central1-a
-
-    - name: Generate SSH key pair
-      run: |
             ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N ""
             echo "SSH_PUBLIC_KEY=$(cat ~/.ssh/id_rsa.pub)" >> $GITHUB_ENV
 
