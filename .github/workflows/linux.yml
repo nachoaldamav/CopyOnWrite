@@ -84,13 +84,13 @@ jobs:
       - name: Copy Repo to GCP VM
         run: |
           REPO_NAME=$(basename $(git rev-parse --show-toplevel))
-          gcloud compute scp --recurse ../$REPO_NAME ghaction@$INSTANCE_NAME:/mnt/btrfs/code --zone=us-central1-a --ssh-key-file=~/.ssh/id_rsa
+          gcloud compute scp --recurse ./ ghaction@$INSTANCE_NAME:/mnt/btrfs/code --zone=us-central1-a --ssh-key-file=~/.ssh/id_rsa
 
       - name: List files on VM
         run: |
           gcloud compute ssh ghaction@$INSTANCE_NAME --zone=us-central1-a \
             --ssh-key-file=~/.ssh/id_rsa \
-            --command="ls -la /mnt/btrfs/$REPO_NAME"
+            --command="ls -la /mnt/btrfs/code"
 
       - name: Add Cargo to PATH
         run: |
@@ -102,7 +102,7 @@ jobs:
         run: |
           gcloud compute ssh ghaction@$INSTANCE_NAME --zone=us-central1-a \
             --ssh-key-file=~/.ssh/id_rsa \
-            --command="cd /mnt/btrfs/$REPO_NAME && cargo test --release"
+            --command="cd /mnt/btrfs/code && cargo test --release"
 
       # Cleanup
       - name: Delete GCP VM if exists
