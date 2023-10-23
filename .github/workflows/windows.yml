@@ -98,7 +98,7 @@ jobs:
     
       - name: Run tests
         run: |
-          gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -Command ' $env:Path = \"C:\Users\Administrator\.cargo\bin;$env:Path\"; cd Z:\code\$REPO_NAME; cargo test'"
+          gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -Command ' $env:Path = \"C:\\Users\\Administrator\\.cargo\\bin;$env:Path\"; cd Z:\\code\\$REPO_NAME; cargo test'"
       
       # Cleanup
       - name: Delete GCP VM if exists
