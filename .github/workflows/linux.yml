@@ -1,9 +1,6 @@
 name: E2E Linux (Google Cloud)
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 jobs:
