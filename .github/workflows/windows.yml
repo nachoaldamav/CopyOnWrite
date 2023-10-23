@@ -86,7 +86,7 @@ jobs:
       - name: Wait for VM to be ready
         run: |
           for i in {1..30}; do
-              if gcloud compute ssh Administrator@$INSTANCE_NAME --command="echo ready" --zone=us-central1-a; then
+              if gcloud compute ssh Administrator@$INSTANCE_NAME --command="echo ready" --zone=us-central1-a --ssh-key-file=~/.ssh/id_rsa; then
               break
               else
               echo "Retrying ($i)..."
