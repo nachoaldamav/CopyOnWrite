@@ -34,16 +34,7 @@ jobs:
 
       - name: Generate SSH key pair
         run: |
-          ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -C "${{ secrets.GCP_MAIL }}" -N ""
-  
-      - name: Set SSH public key
-        run: |
-          ORIGINAL_KEY=$(cat ~/.ssh/id_rsa.pub)
-          echo "SSH_PUBLIC_KEY=${ORIGINAL_KEY}" >> $GITHUB_ENV
-          
-      - name: Mask SSH public key
-        run: |
-          echo "::add-mask::${{ env.SSH_PUBLIC_KEY }}"
+          ssh-keygen -t rsa -b 4096 -f ./gcloud -C "${{ secrets.GCP_MAIL }}" -N ""
 
       - name: Set default project
         run: |
@@ -86,12 +77,12 @@ jobs:
               # Update PATH
               Write-Host "::group::Update PATH"
               $env:Path = "C:\Users\Administrator\.cargo\bin;$env:Path"
-              Write-Host "::endgroup::"',ssh-keys="${{ secrets.GCP_USER }}:${{ env.SSH_PUBLIC_KEY }}"
+              Write-Host "::endgroup::"'
 
       - name: Wait for VM to be ready
         run: |
           for i in {1..30}; do
-              if gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --command="echo ready" --zone=us-central1-a --ssh-key-file=~/.ssh/id_rsa; then
+              if gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --command="echo ready" --zone=us-central1-a --ssh-key-file=./gcloud; then
               break
               else
               echo "Retrying ($i)..."
@@ -102,11 +93,11 @@ jobs:
       - name: Copy the repo
         run: |
             REPO_NAME=$(basename $(git rev-parse --show-toplevel))
-            gcloud compute scp --recurse --zone=us-central1-a ../$REPO_NAME ${{ secrets.GCP_USER }}@$INSTANCE_NAME:"Z:\code" --ssh-key-file=~/.ssh/id_rsa
+            gcloud compute scp --recurse --zone=us-central1-a ../$REPO_NAME ${{ secrets.GCP_USER }}@$INSTANCE_NAME:"Z:\code" --ssh-key-file=./gcloud
       
       - name: List files in project directory
         run: |
-            gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --zone=us-central1-a --command="cd Z:\code\$REPO_NAME && ls -la" --ssh-key-file=~/.ssh/id_rsa
+            gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --zone=us-central1-a --command="cd Z:\code\$REPO_NAME && ls -la" --ssh-key-file=./gcloud
     
       - name: Run tests
         run: |
