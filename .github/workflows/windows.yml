@@ -57,7 +57,7 @@ jobs:
 
       - name: Wait for VM to be ready
         run: |
-          gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --zone=us-central1-a --command="echo 'VM is ready'" --ssh-key-file=./gcloud
+          gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --zone=us-central1-a --ssh-key-file=./gcloud --troubleshoot
 
       - name: Run init script
         run: |
