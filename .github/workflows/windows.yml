@@ -79,11 +79,11 @@ jobs:
       - name: Copy the repo
         run: |
             REPO_NAME=$(basename $(git rev-parse --show-toplevel))
-            gcloud compute scp --recurse --zone=us-central1-a ../$REPO_NAME $INSTANCE_NAME:Z:/code/
+            gcloud compute scp --recurse --zone=us-central1-a ../$REPO_NAME $INSTANCE_NAME:"Z:\code"
     
       - name: Run tests
         run: |
-            gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="cd Z:/code/$REPO_NAME && cargo test"
+            gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="cd Z:\code\$REPO_NAME && cargo test"
       
       # Cleanup
       - name: Delete GCP VM if exists
