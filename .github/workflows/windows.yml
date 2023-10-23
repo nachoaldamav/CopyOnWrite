@@ -94,7 +94,8 @@ jobs:
     
       - name: Run tests
         run: |
-            gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="cd Z:\code\$REPO_NAME && cargo test"
+            gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="set PATH=C:\Users\Administrator\.cargo\bin;%PATH% && cd Z:\code\$REPO_NAME && cargo test"
+    
       
       # Cleanup
       - name: Delete GCP VM if exists
