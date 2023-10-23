@@ -45,7 +45,7 @@ jobs:
           gcloud compute instances create $INSTANCE_NAME \
             --project=${{ secrets.GCP_PROJECT_ID }} \
             --zone=us-central1-a \
-            --machine-type=e2-small \
+            --machine-type=e2-medium \
             --image-family=windows-2022 \
             --image-project=windows-cloud \
             --no-restart-on-failure \
@@ -82,7 +82,7 @@ jobs:
       - name: Wait for VM to be ready
         run: |
           for i in {1..30}; do
-              if gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --command="echo ready" --zone=us-central1-a --ssh-key-file=./gcloud --tunnel-through-iap; then
+              if gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --command="echo ready" --zone=us-central1-a --ssh-key-file=./gcloud; then
               break
               else
               echo "Retrying ($i)..."
@@ -93,15 +93,15 @@ jobs:
       - name: Copy the repo
         run: |
             REPO_NAME=$(basename $(git rev-parse --show-toplevel))
-            gcloud compute scp --recurse --zone=us-central1-a ../$REPO_NAME ${{ secrets.GCP_USER }}@$INSTANCE_NAME:"Z:\code" --ssh-key-file=./gcloud --tunnel-through-iap
+            gcloud compute scp --recurse --zone=us-central1-a ../$REPO_NAME ${{ secrets.GCP_USER }}@$INSTANCE_NAME:"Z:\code" --ssh-key-file=./gcloud
       
       - name: List files in project directory
         run: |
-            gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --zone=us-central1-a --command="cd Z:\code\$REPO_NAME && ls -la" --ssh-key-file=./gcloud --tunnel-through-iap
+            gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --zone=us-central1-a --command="cd Z:\code\$REPO_NAME && ls -la" --ssh-key-file=./gcloud
     
       - name: Run tests
         run: |
-          gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --zone=us-central1-a --command="C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command ' $env:Path = \"C:\\Users\\Administrator\\.cargo\\bin;$env:Path\"; cd Z:\\code\\$REPO_NAME; cargo test'" --ssh-key-file=./gcloud --tunnel-through-iap
+          gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --zone=us-central1-a --command="C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command ' $env:Path = \"C:\\Users\\Administrator\\.cargo\\bin;$env:Path\"; cd Z:\\code\\$REPO_NAME; cargo test'" --ssh-key-file=./gcloud
       
       # Cleanup
       - name: Delete GCP VM if exists
@@ -115,7 +115,7 @@ jobs:
       - name: Delete GCP Disk if exists
         run: |
           if gcloud compute disks describe $DISK_NAME --zone=us-central1-a > /dev/null 2>&1; then
-            gcloud compute disks delete $DISK_NAME --zone=us-central1-a --quiet
+            gcloud compute disks delete $DISK_NAME --zone=us-central1-a --quiet --async
           else
             echo "Disk does not exist. Skipping deletion."
           fi
