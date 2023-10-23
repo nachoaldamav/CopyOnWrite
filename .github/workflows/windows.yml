@@ -39,8 +39,7 @@ jobs:
       - name: Set SSH public key
         run: |
           ORIGINAL_KEY=$(cat ~/.ssh/id_rsa.pub)
-          NEW_KEY=$(echo $ORIGINAL_KEY | sed 's/[^ ]*$/Administrator@'"${INSTANCE_NAME}"'/')
-          echo "SSH_PUBLIC_KEY=${NEW_KEY}" >> $GITHUB_ENV
+          echo "SSH_PUBLIC_KEY=${ORIGINAL_KEY}" >> $GITHUB_ENV
 
       - name: Set default project
         run: |
