@@ -102,7 +102,6 @@ jobs:
       
       # Cleanup
       - name: Delete GCP VM if exists
-        if: always()
         run: |
           if gcloud compute instances describe $INSTANCE_NAME --zone=us-central1-a > /dev/null 2>&1; then
             gcloud compute instances delete $INSTANCE_NAME --zone=us-central1-a --quiet
@@ -111,7 +110,6 @@ jobs:
           fi
 
       - name: Delete GCP Disk if exists
-        if: always()
         run: |
           if gcloud compute disks describe $DISK_NAME --zone=us-central1-a > /dev/null 2>&1; then
             gcloud compute disks delete $DISK_NAME --zone=us-central1-a --quiet
