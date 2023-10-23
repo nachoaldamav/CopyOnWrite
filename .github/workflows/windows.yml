@@ -34,14 +34,14 @@ jobs:
 
       - name: Generate SSH key pair
         run: |
-          ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N ""
+          ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -C "${{ secrets.GCP_MAIL }}" -N ""
   
       - name: Set SSH public key
         run: |
           ORIGINAL_KEY=$(cat ~/.ssh/id_rsa.pub)
           NEW_KEY=$(echo $ORIGINAL_KEY | sed 's/[^ ]*$/Administrator@'"${INSTANCE_NAME}"'/')
           echo "SSH_PUBLIC_KEY=${NEW_KEY}" >> $GITHUB_ENV
-          
+
       - name: Set default project
         run: |
           gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
@@ -83,12 +83,12 @@ jobs:
               # Update PATH
               Write-Host "::group::Update PATH"
               $env:Path = "C:\Users\Administrator\.cargo\bin;$env:Path"
-              Write-Host "::endgroup::"',ssh-keys="Administrator:${{ env.SSH_PUBLIC_KEY }}"
+              Write-Host "::endgroup::"',ssh-keys="${{ env.SSH_PUBLIC_KEY }}"
 
       - name: Wait for VM to be ready
         run: |
           for i in {1..30}; do
-              if gcloud compute ssh Administrator@$INSTANCE_NAME --command="echo ready" --zone=us-central1-a --ssh-key-file=~/.ssh/id_rsa; then
+              if gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --command="echo ready" --zone=us-central1-a --ssh-key-file=~/.ssh/id_rsa; then
               break
               else
               echo "Retrying ($i)..."
@@ -99,15 +99,15 @@ jobs:
       - name: Copy the repo
         run: |
             REPO_NAME=$(basename $(git rev-parse --show-toplevel))
-            gcloud compute scp --recurse --zone=us-central1-a ../$REPO_NAME Administrator@$INSTANCE_NAME:"Z:\code" --ssh-key-file=~/.ssh/id_rsa
+            gcloud compute scp --recurse --zone=us-central1-a ../$REPO_NAME ${{ secrets.GCP_USER }}@$INSTANCE_NAME:"Z:\code" --ssh-key-file=~/.ssh/id_rsa
       
       - name: List files in project directory
         run: |
-            gcloud compute ssh Administrator@$INSTANCE_NAME --zone=us-central1-a --command="cd Z:\code\$REPO_NAME && ls -la" --ssh-key-file=~/.ssh/id_rsa
+            gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --zone=us-central1-a --command="cd Z:\code\$REPO_NAME && ls -la" --ssh-key-file=~/.ssh/id_rsa
     
       - name: Run tests
         run: |
-          gcloud compute ssh Administrator@$INSTANCE_NAME --zone=us-central1-a --command="C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command ' $env:Path = \"C:\\Users\\Administrator\\.cargo\\bin;$env:Path\"; cd Z:\\code\\$REPO_NAME; cargo test'" --ssh-key-file=~/.ssh/id_rsa
+          gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --zone=us-central1-a --command="C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command ' $env:Path = \"C:\\Users\\Administrator\\.cargo\\bin;$env:Path\"; cd Z:\\code\\$REPO_NAME; cargo test'" --ssh-key-file=~/.ssh/id_rsa
       
       # Cleanup
       - name: Delete GCP VM if exists
