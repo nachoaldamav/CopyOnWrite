@@ -40,6 +40,10 @@ jobs:
         run: |
           ORIGINAL_KEY=$(cat ~/.ssh/id_rsa.pub)
           echo "SSH_PUBLIC_KEY=${ORIGINAL_KEY}" >> $GITHUB_ENV
+          
+      - name: Mask SSH public key
+        run: |
+          echo "::add-mask::${{ env.SSH_PUBLIC_KEY }}"
 
       - name: Set default project
         run: |
