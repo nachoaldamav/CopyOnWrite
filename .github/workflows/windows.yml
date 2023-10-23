@@ -65,10 +65,20 @@ jobs:
 
       - name: Execute init script
         run: |
-            SCRIPT_PATH="./scripts/windows.cmd"
-            SCRIPT_CONTENT=$(cat $SCRIPT_PATH)
-            # Execute the script on the VM
-            gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="$SCRIPT_CONTENT"
+            # Prepare Disk
+            echo "::group::Prepare Disk"
+            driveLetter="Z:"
+            volumeLabel="ReFSVolume"
+            diskNumber=1
+            # Initialize Disk using diskpart commands from a here string
+            gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="echo -e 'SELECT DISK $diskNumber\nCLEAN\nCONVERT GPT\nCREATE PARTITION PRIMARY\nFORMAT FS=REFS LABEL=\"$volumeLabel\" QUICK\nASSIGN LETTER=$driveLetter\nEXIT' | diskpart"
+            echo "::endgroup::"
+      
+            # Create "code" directory in the ReFS volume
+            echo "::group::Create code directory"
+            gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="mkdir $driveLetter\\code"
+            echo "::endgroup::"
+        
 
       - name: Copy the repo
         run: |
