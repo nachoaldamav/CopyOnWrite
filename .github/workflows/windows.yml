@@ -50,7 +50,20 @@ jobs:
             --shielded-vtpm \
             --create-disk=auto-delete=yes,device-name=$INSTANCE_NAME,image=projects/windows-cloud/global/images/windows-server-2022-dc-v20231011,mode=rw,size=50,type=projects/${{ secrets.GCP_PROJECT_ID }}/zones/us-central1-a/diskTypes/pd-balanced \
             --create-disk=size=10GB,device-name=$DISK_NAME,mode=rw,type=projects/${{ secrets.GCP_PROJECT_ID }}/zones/us-central1-a/diskTypes/pd-balanced \
-            --metadata sysprep-specialize-script-cmd="googet -noconfirm=true install google-compute-engine-ssh",enable-windows-ssh=TRUE
+            --metadata sysprep-specialize-script-cmd="googet -noconfirm=true install google-compute-engine-ssh",enable-windows-ssh=TRUE,windows-startup-script-ps1='
+              # Prepare Disk
+              Write-Host "::group::Prepare Disk"
+              $driveLetter = "Z:"
+              $volumeLabel = "ReFSVolume"
+              $diskNumber = 1
+              Initialize-Disk -Number $diskNumber -PartitionStyle GPT
+              New-Partition -DiskNumber $diskNumber -UseMaximumSize -AssignDriveLetter | Format-Volume -FileSystem ReFS -NewFileSystemLabel $volumeLabel
+              Write-Host "::endgroup::"
+
+              # Create "code" directory in the ReFS volume
+              Write-Host "::group::Create code directory"
+              New-Item -Path "$driveLetter\code" -ItemType Directory
+              Write-Host "::endgroup::"'
 
       - name: Wait for VM to be ready
         run: |
@@ -62,23 +75,6 @@ jobs:
               sleep 2
               fi
           done
-
-      - name: Execute init script
-        run: |
-            # Prepare Disk
-            echo "::group::Prepare Disk"
-            driveLetter="Z:"
-            volumeLabel="ReFSVolume"
-            diskNumber=1
-            # Initialize Disk using diskpart commands from a here string
-            gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="echo -e 'SELECT DISK $diskNumber\nCLEAN\nCONVERT GPT\nCREATE PARTITION PRIMARY\nFORMAT FS=REFS LABEL=\"$volumeLabel\" QUICK\nASSIGN LETTER=$driveLetter\nEXIT' | diskpart"
-            echo "::endgroup::"
-      
-            # Create "code" directory in the ReFS volume
-            echo "::group::Create code directory"
-            gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="mkdir $driveLetter\\code"
-            echo "::endgroup::"
-        
 
       - name: Copy the repo
         run: |
