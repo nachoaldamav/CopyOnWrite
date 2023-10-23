@@ -57,27 +57,31 @@ jobs:
 
       - name: Wait for VM to be ready
         run: |
-          gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --zone=us-central1-a --ssh-key-file=./gcloud --troubleshoot
+          while [[ $(gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="echo 'ready'" --ssh-key-file=./gcloud) != "ready" ]]; do
+            echo "Waiting for VM to be ready..."
+            sleep 5
+          done
 
       - name: Run init script
         run: |
-          gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --zone=us-central1-a --command="powershell.exe -Command \"$(cat scripts/windows.ps1 | sed 's/"/`\"/g' | sed ':a;N;$!ba;s/\n/`n/g' | sed 's/^.\(.*\).$/\1/')\"" --ssh-key-file=./gcloud
+          gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="powershell.exe -Command \"$(cat scripts/windows.ps1 | sed 's/"/`\"/g' | sed ':a;N;$!ba;s/\n/`n/g' | sed 's/^.\(.*\).$/\1/')\"" --ssh-key-file=./gcloud
 
       - name: Copy the repo
         run: |
             REPO_NAME=$(basename $(git rev-parse --show-toplevel))
-            gcloud compute scp --recurse --zone=us-central1-a ../$REPO_NAME ${{ secrets.GCP_USER }}@$INSTANCE_NAME:"Z:\code" --ssh-key-file=./gcloud
+            gcloud compute scp --recurse --zone=us-central1-a ../$REPO_NAME $INSTANCE_NAME:"Z:\code" --ssh-key-file=./gcloud
       
       - name: List files in project directory
         run: |
-            gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --zone=us-central1-a --command="cd Z:\code\$REPO_NAME && ls -la" --ssh-key-file=./gcloud
+            gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="cd Z:\code\$REPO_NAME && ls -la" --ssh-key-file=./gcloud
     
       - name: Run tests
         run: |
-          gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --zone=us-central1-a --command="C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command ' $env:Path = \"C:\\Users\\Administrator\\.cargo\\bin;$env:Path\"; cd Z:\\code\\$REPO_NAME; cargo test'" --ssh-key-file=./gcloud
+          gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command ' $env:Path = \"C:\\Users\\Administrator\\.cargo\\bin;$env:Path\"; cd Z:\\code\\$REPO_NAME; cargo test'" --ssh-key-file=./gcloud
       
       # Cleanup
       - name: Delete GCP VM if exists
+        if: always()
         run: |
           if gcloud compute instances describe $INSTANCE_NAME --zone=us-central1-a > /dev/null 2>&1; then
             gcloud compute instances delete $INSTANCE_NAME --zone=us-central1-a --quiet
@@ -86,6 +90,7 @@ jobs:
           fi
 
       - name: Delete GCP Disk if exists
+        if: always()
         run: |
           if gcloud compute disks describe $DISK_NAME --zone=us-central1-a > /dev/null 2>&1; then
             gcloud compute disks delete $DISK_NAME --zone=us-central1-a --quiet --async
