@@ -82,7 +82,7 @@ jobs:
       - name: Wait for VM to be ready
         run: |
           for i in {1..30}; do
-              if gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --command="echo ready" --zone=us-central1-a --ssh-key-file=./gcloud; then
+              if gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --command="echo ready" --zone=us-central1-a --ssh-key-file=./gcloud --tunnel-through-iap; then
               break
               else
               echo "Retrying ($i)..."
@@ -93,15 +93,15 @@ jobs:
       - name: Copy the repo
         run: |
             REPO_NAME=$(basename $(git rev-parse --show-toplevel))
-            gcloud compute scp --recurse --zone=us-central1-a ../$REPO_NAME ${{ secrets.GCP_USER }}@$INSTANCE_NAME:"Z:\code" --ssh-key-file=./gcloud
+            gcloud compute scp --recurse --zone=us-central1-a ../$REPO_NAME ${{ secrets.GCP_USER }}@$INSTANCE_NAME:"Z:\code" --ssh-key-file=./gcloud --tunnel-through-iap
       
       - name: List files in project directory
         run: |
-            gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --zone=us-central1-a --command="cd Z:\code\$REPO_NAME && ls -la" --ssh-key-file=./gcloud
+            gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --zone=us-central1-a --command="cd Z:\code\$REPO_NAME && ls -la" --ssh-key-file=./gcloud --tunnel-through-iap
     
       - name: Run tests
         run: |
-          gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --zone=us-central1-a --command="C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command ' $env:Path = \"C:\\Users\\Administrator\\.cargo\\bin;$env:Path\"; cd Z:\\code\\$REPO_NAME; cargo test'" --ssh-key-file=~/.ssh/id_rsa
+          gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --zone=us-central1-a --command="C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -Command ' $env:Path = \"C:\\Users\\Administrator\\.cargo\\bin;$env:Path\"; cd Z:\\code\\$REPO_NAME; cargo test'" --ssh-key-file=./gcloud --tunnel-through-iap
       
       # Cleanup
       - name: Delete GCP VM if exists
