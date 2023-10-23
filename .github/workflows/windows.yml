@@ -91,11 +91,14 @@ jobs:
         run: |
             REPO_NAME=$(basename $(git rev-parse --show-toplevel))
             gcloud compute scp --recurse --zone=us-central1-a ../$REPO_NAME $INSTANCE_NAME:"Z:\code"
+      
+      - name: List files in project directory
+        run: |
+            gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="cd Z:\code\$REPO_NAME && ls -la"
     
       - name: Run tests
         run: |
-            gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="set PATH=C:\Users\Administrator\.cargo\bin;%PATH% && cd Z:\code\$REPO_NAME && cargo test"
-    
+            gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="powershell -Command ' $env:Path = \"C:\Users\Administrator\.cargo\bin;$env:Path\"; cd Z:\code\$REPO_NAME; cargo test'"
       
       # Cleanup
       - name: Delete GCP VM if exists
