@@ -38,7 +38,7 @@ jobs:
   
       - name: Set SSH public key
         run: |
-          echo "SSH_PUBLIC_KEY=$(cat ~/.ssh/id_rsa.pub)" >> $GITHUB_ENV
+          echo "SSH_PUBLIC_KEY=$(cat ~/.ssh/id_rsa.pub) Administrator:$INSTANCE_NAME" >> $GITHUB_ENV
 
       - name: Set default project
         run: |
@@ -81,7 +81,7 @@ jobs:
               # Update PATH
               Write-Host "::group::Update PATH"
               $env:Path = "C:\Users\Administrator\.cargo\bin;$env:Path"
-              Write-Host "::endgroup::"',ssh-keys="${{ env.SSH_PUBLIC_KEY }}"
+              Write-Host "::endgroup::"',ssh-keys="Administrator:${{ env.SSH_PUBLIC_KEY }}"
 
       - name: Wait for VM to be ready
         run: |
