@@ -38,8 +38,10 @@ jobs:
   
       - name: Set SSH public key
         run: |
-          echo "SSH_PUBLIC_KEY=$(cat ~/.ssh/id_rsa.pub) Administrator:$INSTANCE_NAME" >> $GITHUB_ENV
-
+          ORIGINAL_KEY=$(cat ~/.ssh/id_rsa.pub)
+          NEW_KEY=$(echo $ORIGINAL_KEY | sed 's/[^ ]*$/Administrator@'"${INSTANCE_NAME}"'/')
+          echo "SSH_PUBLIC_KEY=${NEW_KEY}" >> $GITHUB_ENV
+          
       - name: Set default project
         run: |
           gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
