@@ -42,13 +42,13 @@ jobs:
             --project=${{ secrets.GCP_PROJECT_ID }} \
             --zone=us-central1-a \
             --machine-type=e2-small \
+            --image-family=windows-2022 \
             --no-restart-on-failure \
             --maintenance-policy=TERMINATE \
             --provisioning-model=SPOT \
             --instance-termination-action=DELETE \
             --shielded-secure-boot \
             --shielded-vtpm \
-            --create-disk=auto-delete=yes,device-name=$INSTANCE_NAME,image=projects/windows-cloud/global/images/windows-server-2022-dc-v20231011,mode=rw,size=50,type=projects/${{ secrets.GCP_PROJECT_ID }}/zones/us-central1-a/diskTypes/pd-balanced \
             --create-disk=size=10GB,device-name=$DISK_NAME,mode=rw,type=projects/${{ secrets.GCP_PROJECT_ID }}/zones/us-central1-a/diskTypes/pd-balanced \
             --metadata sysprep-specialize-script-cmd="googet -noconfirm=true install google-compute-engine-ssh",enable-windows-ssh=TRUE,windows-startup-script-ps1='
               # Prepare Disk
