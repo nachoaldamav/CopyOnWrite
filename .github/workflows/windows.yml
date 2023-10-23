@@ -55,10 +55,6 @@ jobs:
             --create-disk=size=10GB,device-name=$DISK_NAME,mode=rw,type=projects/${{ secrets.GCP_PROJECT_ID }}/zones/us-central1-a/diskTypes/pd-balanced \
             --metadata sysprep-specialize-script-cmd="googet -noconfirm=true install google-compute-engine-ssh",enable-windows-ssh=TRUE
 
-      - name: Check SSH status
-        run: |
-          gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --project=srdrabx --zone=us-central1-a --troubleshoot --quiet --ssh-key-file=./gcloud
-
       - name: Run init script
         run: |
           # Get the content of the init script from scripts/windows.ps1, escape double quotes and newlines, and remove the first and last character (the first and last double quote)
