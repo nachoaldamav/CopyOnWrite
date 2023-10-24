@@ -12,4 +12,7 @@ echo "::endgroup::"
 sudo mkdir -p /mnt/xfs/code
 
 # Give ownership to the current user
-sudo chown -R $USER:$USER /mnt/xfs
+sudo chown -R $USER:$USER /mnt/xfs/code
+
+# Give full permissions to the current user
+sudo chmod -R 777 /mnt/xfs/code
