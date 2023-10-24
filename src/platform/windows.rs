@@ -405,8 +405,7 @@ fn close_handle(handle: HANDLE) -> Result<(), windows::core::Error> {
 mod tests {
     use super::*;
     use tempfile;
-    use tempfile::Builder;
-    use std::{env, io::{Read, Write}};
+    use std::io::Write;
 
     #[test]
     fn should_open_file() {
