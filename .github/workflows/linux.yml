@@ -14,7 +14,7 @@ jobs:
         fs: ['btrfs', 'xfs']
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Authenticate with Google Cloud
         uses: google-github-actions/auth@v1
@@ -50,19 +50,13 @@ jobs:
           --project=${{ secrets.GCP_PROJECT_ID }} \
           --zone=us-central1-a \
           --machine-type=e2-small \
-          --network-interface=network-tier=PREMIUM,stack-type=IPV4_ONLY,subnet=default \
+          --source-machine-image=windows-rs \
           --no-restart-on-failure \
           --maintenance-policy=TERMINATE \
           --provisioning-model=SPOT \
           --instance-termination-action=DELETE \
           --service-account=${{ secrets.GCP_SERVICE_ACCOUNT }} \
-          --scopes=https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring.write,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append \
-          --create-disk=auto-delete=yes,boot=yes,device-name=$INSTANCE_NAME,image=projects/ubuntu-os-cloud/global/images/ubuntu-2004-focal-v20230918,mode=rw,size=10,type=projects/${{ secrets.GCP_PROJECT_ID }}/zones/us-central1-a/diskTypes/pd-balanced \
           --create-disk=size=10GB,device-name=$DISK_NAME,mode=rw,type=projects/${{ secrets.GCP_PROJECT_ID }}/zones/us-central1-a/diskTypes/pd-balanced \
-          --no-shielded-secure-boot \
-          --shielded-vtpm \
-          --shielded-integrity-monitoring \
-          --reservation-affinity=any \
           --metadata=ssh-keys="ghaction:${{ env.SSH_PUBLIC_KEY }}"
 
       - name: Wait for VM to be ready
@@ -96,18 +90,12 @@ jobs:
             --ssh-key-file=~/.ssh/id_rsa \
             --command="ls -la /mnt/${{ matrix.fs }}/code/$REPO_NAME"
 
-      - name: Install Rust
-        run: |
-          gcloud compute ssh ghaction@$INSTANCE_NAME --zone=us-central1-a \
-            --ssh-key-file=~/.ssh/id_rsa \
-            --command="curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && source ~/.cargo/env"
-
       - name: Run Tests as New User
         run: |
           REPO_NAME=$(basename $(git rev-parse --show-toplevel))
           gcloud compute ssh ghaction@$INSTANCE_NAME --zone=us-central1-a \
             --ssh-key-file=~/.ssh/id_rsa \
-            --command="source ~/.cargo/env && cd /mnt/${{ matrix.fs }}/code/$REPO_NAME && cargo test"
+            --command="cd /mnt/${{ matrix.fs }}/code/$REPO_NAME && cargo test"
 
       # Cleanup
       - name: Delete GCP VM if exists

@@ -1,11 +1,5 @@
 #!/bin/bash
 
-# Update the package list and install essential packages
-echo "::group::Update the package list and install essential packages"
-sudo apt-get update
-sudo apt-get install -y build-essential git curl xfsprogs
-echo "::endgroup::"
-
 # Prepare Disk
 echo "::group::Prepare Disk"
 sudo mkdir -p /mnt/xfs
