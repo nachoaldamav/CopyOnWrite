@@ -75,14 +75,14 @@ jobs:
       - name: Run tests
         run: |
           REPO_NAME=$(basename $(git rev-parse --show-toplevel))
-          gcloud compute ssh $INSTANCE_NAME --zone=us-east1-b --command="powershell -Command \"\cd D:\\\\code\\\\$REPO_NAME; cargo test\"" --ssh-key-file=./gcloud
+          gcloud compute ssh $INSTANCE_NAME --zone=us-east1-b --command="powershell -Command \"cd D:\\\\code\\\\$REPO_NAME; cargo test\"" --ssh-key-file=./gcloud
   
       # Cleanup
       - name: Delete GCP VM if exists
         if: always()
         run: |
           if gcloud compute instances describe $INSTANCE_NAME --zone=us-east1-b > /dev/null 2>&1; then
-            gcloud compute instances delete $INSTANCE_NAME --zone=us-east1-b --quiet
+            gcloud compute instances delete $INSTANCE_NAME --zone=us-east1-b --quiet --async
           else
             echo "VM does not exist. Skipping deletion."
           fi
