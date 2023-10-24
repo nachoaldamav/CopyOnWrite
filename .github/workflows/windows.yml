@@ -54,19 +54,21 @@ jobs:
             --instance-termination-action=DELETE \
             --create-disk=size=10GB,device-name=$DISK_NAME,mode=rw,type=projects/${{ secrets.GCP_PROJECT_ID }}/zones/us-central1-a/diskTypes/pd-balanced \
             --metadata sysprep-specialize-script-cmd="googet -noconfirm=true install google-compute-engine-ssh",enable-windows-ssh=TRUE,ssh-keys="${{ secrets.GCP_USER }}:$(cat ./gcloud.pub)"
-
-      - name: Wait 2 minutes for VM to start
-        run: |
-          sleep 120
       
       - name: Install NumPy
         run: |
           $(gcloud info --format="value(basic.python_location)") -m pip install numpy
+
+      
+      - name: Wait 5 minutes for VM to start
+        run: |
+          sleep 300
           
       - name: Run init script
         run: |
           export CLOUDSDK_PYTHON_SITEPACKAGES=1
-          gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="powershell.exe -Command \"$(cat scripts/windows.ps1 | sed 's/"/`\"/g' | sed ':a;N;$!ba;s/\n/`n/g' | sed 's/^.\(.*\).$/\1/')\"" --ssh-key-file=./gcloud --tunnel-through-iap
+          gcloud comput scp --zone=us-central1-a scripts/windows.ps1 $INSTANCE_NAME:"C:\\users\\nacho\\Desktop\\windows.ps1" --ssh-key-file=./gcloud --tunnel-through-iap
+          gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="powershell.exe -ExecutionPolicy Bypass -File C:\\users\\nacho\\Desktop\\windows.ps1" --ssh-key-file=./gcloud --tunnel-through-iap
 
       - name: Copy the repo
         run: |
