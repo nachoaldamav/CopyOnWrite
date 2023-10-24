@@ -83,8 +83,8 @@ jobs:
       - name: Run tests
         run: |
           REPO_NAME=$(basename $(git rev-parse --show-toplevel))
-          gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="powershell -Command \"\$env:Path = \$env:Path + ';\$env:USERPROFILE\\.cargo\\\\bin'; cd D:\\\\code\\\\$REPO_NAME; cargo test\"" --ssh-key-file=./gcloud
-      
+          gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="powershell -Command \"\$env:Path = \$env:Path + ';\$env:USERPROFILE\\.cargo\\\\bin;C:\\\\Program Files (x86)\\\\Microsoft Visual Studio\\\\2019\\\\BuildTools\\\\VC\\\\Tools\\\\MSVC\\\\14.29.30133\\\\bin\\\\Hostx64\\\\x64'; cd D:\\\\code\\\\$REPO_NAME; cargo test\"" --ssh-key-file=./gcloud
+  
       # Cleanup
       - name: Delete GCP VM if exists
         if: always()

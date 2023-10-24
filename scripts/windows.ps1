@@ -14,7 +14,11 @@ Invoke-WebRequest -Uri "https://win.rustup.rs" -OutFile "rustup-init.exe"
 .\rustup-init.exe -y
 Write-Host "Finish installing rustup"
 
+Write-Host "Start installing Chocolatey"
+Invoke-WebRequest -Uri "https://chocolatey.org/install.ps1" -OutFile "choco-install.ps1"
+.\choco-install.ps1
+Write-Host "Finish installing Chocolatey"
+
 Write-Host "Start installing C++ build tools"
-Invoke-WebRequest -Uri "https://aka.ms/vs/17/release/vs_community.exe" -OutFile "vs_installer.exe"
-Start-Process -FilePath "vs_installer.exe" -ArgumentList "install --path install='C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools' --add Microsoft.VisualStudio.Workload.VCTools --quiet --norestart" -Wait
+choco install -y visualstudio2019buildtools --package-parameters "--add Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
 Write-Host "Finish installing C++ build tools"
