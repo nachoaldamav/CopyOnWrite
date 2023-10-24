@@ -31,6 +31,11 @@ jobs:
           DISK_NAME="$INSTANCE_NAME-disk"
           echo "INSTANCE_NAME=$INSTANCE_NAME" >> $GITHUB_ENV
           echo "DISK_NAME=$DISK_NAME" >> $GITHUB_ENV
+      
+      - name: Get current repo name
+        run: |
+          REPO_NAME=$(basename $(git rev-parse --show-toplevel))
+          echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
 
       - name: Set default project
         run: |
@@ -91,23 +96,20 @@ jobs:
 
       - name: Copy Repo to GCP VM
         run: |
-          REPO_NAME=$(basename $(git rev-parse --show-toplevel))
-          gcloud compute scp --recurse ../$REPO_NAME ${{ secrets.GCP_USER }}@$INSTANCE_NAME:/mnt/${{ matrix.fs }}/code --zone=${{ env.ZONE }} --ssh-key-file=./gcloud
+          gcloud compute scp --recurse ../${{ env.REPO_NAME }} ${{ secrets.GCP_USER }}@$INSTANCE_NAME:/mnt/${{ matrix.fs }}/code --zone=${{ env.ZONE }} --ssh-key-file=./gcloud
 
       - name: List files on VM
         run: |
-          REPO_NAME=$(basename $(git rev-parse --show-toplevel))
           gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --zone=${{ env.ZONE }} \
             --ssh-key-file=./gcloud \
-            --command="ls -la /mnt/${{ matrix.fs }}/code/$REPO_NAME"
+            --command="ls -la /mnt/${{ matrix.fs }}/code/${{ env.REPO_NAME }}"
 
-      - name: Run Tests as New User
+      - name: Run Tests
         run: |
-          REPO_NAME=$(basename $(git rev-parse --show-toplevel))
           gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --zone=${{ env.ZONE }} \
             --ssh-key-file=./gcloud \
-            --command="cd /mnt/${{ matrix.fs }}/code/$REPO_NAME && cargo test"
-
+            --command="export PATH=\$PATH:~/.cargo/bin && cd /mnt/${{ matrix.fs }}/code/${{ env.REPO_NAME }} && cargo test"
+          
       # Cleanup
       - name: Delete GCP VM if exists
         if: always()
