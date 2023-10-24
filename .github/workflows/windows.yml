@@ -67,7 +67,7 @@ jobs:
       - name: Run init script
         run: |
           export CLOUDSDK_PYTHON_SITEPACKAGES=1
-          gcloud comput scp --zone=us-central1-a scripts/windows.ps1 $INSTANCE_NAME:"C:\\users\\nacho\\Desktop\\windows.ps1" --ssh-key-file=./gcloud --tunnel-through-iap
+          gcloud compute scp --zone=us-central1-a scripts/windows.ps1 $INSTANCE_NAME:"C:\\users\\nacho\\Desktop\\windows.ps1" --ssh-key-file=./gcloud --tunnel-through-iap
           gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="powershell.exe -ExecutionPolicy Bypass -File C:\\users\\nacho\\Desktop\\windows.ps1" --ssh-key-file=./gcloud --tunnel-through-iap
 
       - name: Copy the repo
