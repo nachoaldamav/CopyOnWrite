@@ -58,10 +58,15 @@ jobs:
       - name: Wait 2 minutes for VM to start
         run: |
           sleep 120
+      
+      - name: Install NumPy
+        run: |
+          $(gcloud info --format="value(basic.python_location)") -m pip install numpy
           
       - name: Run init script
         run: |
-          gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="powershell.exe -Command \"$(cat scripts/windows.ps1 | sed 's/"/`\"/g' | sed ':a;N;$!ba;s/\n/`n/g' | sed 's/^.\(.*\).$/\1/')\"" --ssh-key-file=./gcloud
+          export CLOUDSDK_PYTHON_SITEPACKAGES=1
+          gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="powershell.exe -Command \"$(cat scripts/windows.ps1 | sed 's/"/`\"/g' | sed ':a;N;$!ba;s/\n/`n/g' | sed 's/^.\(.*\).$/\1/')\"" --ssh-key-file=./gcloud --tunnel-through-iap
 
       - name: Copy the repo
         run: |
