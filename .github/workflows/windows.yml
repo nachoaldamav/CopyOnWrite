@@ -57,9 +57,9 @@ jobs:
         run: |
           $(gcloud info --format="value(basic.python_location)") -m pip install numpy
       
-      - name: Wait 2 minutes for VM to start
+      - name: Wait 1 minute for VM to start
         run: |
-          sleep 120
+          sleep 60
           
       - name: Copy the repo
         run: |
