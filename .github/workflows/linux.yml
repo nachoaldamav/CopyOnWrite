@@ -46,11 +46,13 @@ jobs:
 
       - name: Fetch available zones and set dynamic zone
         run: |
+          sudo apt-get install -y jq
           AVAILABLE_ZONES=$(gcloud compute zones list --project=${{ secrets.GCP_PROJECT_ID }} --format="value(name)")
           for ZONE in $AVAILABLE_ZONES; do
-            SSD_QUOTA=$(gcloud compute regions describe $(echo $ZONE | sed 's/\([a-z]*-[a-z]*[1-9]\)-[a-z]*/\1/') \
-              --project=${{ secrets.GCP_PROJECT_ID }} --format="value(quotas[?(metric == 'SSD_TOTAL_GB')].limit)")
-            if (( SSD_QUOTA >= 20 )); then
+            REGION=$(echo $ZONE | sed 's/\([a-z]*-[a-z]*[1-9]\)-[a-z]*/\1/')
+            QUOTAS_JSON=$(gcloud compute regions describe $REGION --project=${{ secrets.GCP_PROJECT_ID }} --format=json)
+            SSD_QUOTA=$(echo $QUOTAS_JSON | jq '.quotas[] | select(.metric == "SSD_TOTAL_GB") | .limit')
+            if (( $(echo "$SSD_QUOTA >= 260" | bc -l) )); then
               echo "Selected Zone: $ZONE"
               echo "ZONE=$ZONE" >> $GITHUB_ENV
               break
