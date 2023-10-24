@@ -44,25 +44,38 @@ jobs:
         run: |
           echo "SSH_PUBLIC_KEY=$(cat ~/.ssh/id_rsa.pub)" >> $GITHUB_ENV
 
+      - name: Fetch available zones and set dynamic zone
+        run: |
+          AVAILABLE_ZONES=$(gcloud compute zones list --project=${{ secrets.GCP_PROJECT_ID }} --format="value(name)")
+          for ZONE in $AVAILABLE_ZONES; do
+            SSD_QUOTA=$(gcloud compute regions describe $(echo $ZONE | sed 's/\([a-z]*-[a-z]*[1-9]\)-[a-z]*/\1/') \
+              --project=${{ secrets.GCP_PROJECT_ID }} --format="value(quotas[?(metric == 'SSD_TOTAL_GB')].limit)")
+            if (( SSD_QUOTA >= 20 )); then
+              echo "Selected Zone: $ZONE"
+              echo "ZONE=$ZONE" >> $GITHUB_ENV
+              break
+            fi
+          done
+
       - name: Create GCP VM with Spot provisioning
         run: |
           gcloud compute instances create $INSTANCE_NAME \
           --project=${{ secrets.GCP_PROJECT_ID }} \
-          --zone=us-central1-a \
+          --zone=${{ env.ZONE }} \
           --machine-type=e2-small \
-          --source-machine-image=windows-rs \
+          --source-machine-image=linux-rs \
           --no-restart-on-failure \
           --maintenance-policy=TERMINATE \
           --provisioning-model=SPOT \
           --instance-termination-action=DELETE \
           --service-account=${{ secrets.GCP_SERVICE_ACCOUNT }} \
-          --create-disk=size=10GB,device-name=$DISK_NAME,mode=rw,type=projects/${{ secrets.GCP_PROJECT_ID }}/zones/us-central1-a/diskTypes/pd-balanced \
+          --create-disk=size=10GB,device-name=$DISK_NAME,mode=rw,type=projects/${{ secrets.GCP_PROJECT_ID }}/zones/${{ env.ZONE }}/diskTypes/pd-balanced \
           --metadata=ssh-keys="ghaction:${{ env.SSH_PUBLIC_KEY }}"
 
       - name: Wait for VM to be ready
         run: |
           for i in {1..30}; do
-              if gcloud compute ssh $INSTANCE_NAME --command="echo ready" --zone=us-central1-a; then
+              if gcloud compute ssh $INSTANCE_NAME --command="echo ready" --zone=${{ env.ZONE }}; then
               break
               else
               echo "Retrying ($i)..."
@@ -74,26 +87,26 @@ jobs:
         run: |
           SCRIPT_PATH=scripts/linux-${{ matrix.fs }}.sh
           SCRIPT_CONTENT=$(cat $SCRIPT_PATH)
-            gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a \
+            gcloud compute ssh $INSTANCE_NAME --zone=${{ env.ZONE }} \
                 --ssh-key-file=~/.ssh/id_rsa \
                 --command="echo '$SCRIPT_CONTENT' > init-script.sh && chmod +x init-script.sh && ./init-script.sh"
 
       - name: Copy Repo to GCP VM
         run: |
           REPO_NAME=$(basename $(git rev-parse --show-toplevel))
-          gcloud compute scp --recurse ../$REPO_NAME ghaction@$INSTANCE_NAME:/mnt/${{ matrix.fs }}/code --zone=us-central1-a --ssh-key-file=~/.ssh/id_rsa
+          gcloud compute scp --recurse ../$REPO_NAME ghaction@$INSTANCE_NAME:/mnt/${{ matrix.fs }}/code --zone=${{ env.ZONE }} --ssh-key-file=~/.ssh/id_rsa
 
       - name: List files on VM
         run: |
           REPO_NAME=$(basename $(git rev-parse --show-toplevel))
-          gcloud compute ssh ghaction@$INSTANCE_NAME --zone=us-central1-a \
+          gcloud compute ssh ghaction@$INSTANCE_NAME --zone=${{ env.ZONE }} \
             --ssh-key-file=~/.ssh/id_rsa \
             --command="ls -la /mnt/${{ matrix.fs }}/code/$REPO_NAME"
 
       - name: Run Tests as New User
         run: |
           REPO_NAME=$(basename $(git rev-parse --show-toplevel))
-          gcloud compute ssh ghaction@$INSTANCE_NAME --zone=us-central1-a \
+          gcloud compute ssh ghaction@$INSTANCE_NAME --zone=${{ env.ZONE }} \
             --ssh-key-file=~/.ssh/id_rsa \
             --command="cd /mnt/${{ matrix.fs }}/code/$REPO_NAME && cargo test"
 
@@ -101,8 +114,8 @@ jobs:
       - name: Delete GCP VM if exists
         if: always()
         run: |
-          if gcloud compute instances describe $INSTANCE_NAME --zone=us-central1-a > /dev/null 2>&1; then
-            gcloud compute instances delete $INSTANCE_NAME --zone=us-central1-a --quiet
+          if gcloud compute instances describe $INSTANCE_NAME --zone=${{ env.ZONE }} > /dev/null 2>&1; then
+            gcloud compute instances delete $INSTANCE_NAME --zone=${{ env.ZONE }} --quiet
           else
             echo "VM does not exist. Skipping deletion."
           fi
@@ -110,8 +123,8 @@ jobs:
       - name: Delete GCP Disk if exists
         if: always()
         run: |
-          if gcloud compute disks describe $DISK_NAME --zone=us-central1-a > /dev/null 2>&1; then
-            gcloud compute disks delete $DISK_NAME --zone=us-central1-a --quiet
+          if gcloud compute disks describe $DISK_NAME --zone=${{ env.ZONE }} > /dev/null 2>&1; then
+            gcloud compute disks delete $DISK_NAME --zone=${{ env.ZONE }} --quiet
           else
             echo "Disk does not exist. Skipping deletion."
           fi
