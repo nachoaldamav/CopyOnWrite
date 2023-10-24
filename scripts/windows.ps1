@@ -1,24 +1,18 @@
-# Prepare Disk
-Write-Host "::group::Prepare Disk"
-$driveLetter = "Z:"
+$driveLetter = "D:"
 $volumeLabel = "ReFSVolume"
 $diskNumber = 1
 Initialize-Disk -Number $diskNumber -PartitionStyle GPT
+Write-Host "Initialize disk $diskNumber"
 New-Partition -DiskNumber $diskNumber -UseMaximumSize -AssignDriveLetter | Format-Volume -FileSystem ReFS -NewFileSystemLabel $volumeLabel
-Write-Host "::endgroup::"
+Write-Host "Create partition on disk $diskNumber"
 
-# Create "code" directory in the ReFS volume
-Write-Host "::group::Create code directory"
 New-Item -Path "$driveLetter\code" -ItemType Directory
-Write-Host "::endgroup::"
+Write-Host "Create code directory at $driveLetter\code"
 
-# Install Rust
-Write-Host "::group::Install Rust"
+Write-Host "Start installing rustup"
 $rustupInit = (New-Object System.Net.WebClient).DownloadString("https://win.rustup.rs")
 $rustupInit | Invoke-Expression
-Write-Host "::endgroup::"
+Write-Host "Finish installing rustup"
 
-# Update PATH
-Write-Host "::group::Update PATH"
 $env:Path = "C:\Users\Administrator\.cargo\bin;$env:Path"
-Write-Host "::endgroup::"
+Write-Host "Added cargo to path"
