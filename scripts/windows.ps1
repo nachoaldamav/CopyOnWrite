@@ -10,8 +10,8 @@ New-Item -Path "$driveLetter\code" -ItemType Directory
 Write-Host "Create code directory at $driveLetter\code"
 
 Write-Host "Start installing rustup"
-$rustupInit = (New-Object System.Net.WebClient).DownloadString("https://win.rustup.rs")
-$rustupInit | Invoke-Expression
+Invoke-WebRequest -Uri "https://win.rustup.rs" -OutFile "rustup-init.exe"
+.\rustup-init.exe -y
 Write-Host "Finish installing rustup"
 
 $env:Path = "C:\Users\Administrator\.cargo\bin;$env:Path"
