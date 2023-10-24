@@ -10,3 +10,6 @@ echo "::endgroup::"
 
 # Create "code" directory in the xfs volume
 sudo mkdir -p /mnt/xfs/code
+
+# Give ownership to the current user
+sudo chown -R $USER:$USER /mnt/xfs

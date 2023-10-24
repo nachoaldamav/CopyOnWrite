@@ -73,7 +73,7 @@ jobs:
       - name: Wait for VM to be ready
         run: |
           for i in {1..30}; do
-              if gcloud compute ssh $INSTANCE_NAME --command="echo ready" --zone=${{ env.ZONE }}; then
+              if gcloud compute ssh $INSTANCE_NAME --command="echo ready" --zone=${{ env.ZONE }} --ssh-key-file=./gcloud; then
               break
               else
               echo "Retrying ($i)..."
