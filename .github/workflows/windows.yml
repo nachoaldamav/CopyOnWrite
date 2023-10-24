@@ -77,14 +77,17 @@ jobs:
       
       - name: List files in project directory
         run: |
-            gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="cd D:\code\$REPO_NAME && ls -la" --ssh-key-file=./gcloud
+            REPO_NAME=$(basename $(git rev-parse --show-toplevel))
+            gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="powershell.exe -Command 'cd D:\\code\\$REPO_NAME; ls'" --ssh-key-file=./gcloud
     
       - name: Run tests
         run: |
-          gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="powershell.exe -Command ' $env:Path = \"C:\\Users\\Administrator\\.cargo\\bin;$env:Path\"; cd D:\\code\\$REPO_NAME; cargo test'" --ssh-key-file=./gcloud
+          # Cargo is installed at $env:USERPROFILE\.cargo\bin
+          gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="powershell.exe -Command '$env:Path = $env:Path + \";$env:USERPROFILE\.cargo\bin\"; cd D:\\code\\$REPO_NAME; cargo test'" --ssh-key-file=./gcloud
       
       # Cleanup
       - name: Delete GCP VM if exists
+        if: always()
         run: |
           if gcloud compute instances describe $INSTANCE_NAME --zone=us-central1-a > /dev/null 2>&1; then
             gcloud compute instances delete $INSTANCE_NAME --zone=us-central1-a --quiet
@@ -93,6 +96,7 @@ jobs:
           fi
 
       - name: Delete GCP Disk if exists
+        if: always()
         run: |
           if gcloud compute disks describe $DISK_NAME --zone=us-central1-a > /dev/null 2>&1; then
             gcloud compute disks delete $DISK_NAME --zone=us-central1-a --quiet --async
