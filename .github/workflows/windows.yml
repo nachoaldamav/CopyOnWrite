@@ -55,20 +55,9 @@ jobs:
             --create-disk=size=10GB,device-name=$DISK_NAME,mode=rw,type=projects/${{ secrets.GCP_PROJECT_ID }}/zones/us-central1-a/diskTypes/pd-balanced \
             --metadata sysprep-specialize-script-cmd="googet -noconfirm=true install google-compute-engine-ssh",enable-windows-ssh=TRUE,ssh-keys="${{ secrets.GCP_USER }}:$(cat ./gcloud.pub)"
 
-      - name: Wait for VM to be ready
+      - name: Wait 2 minutes for VM to start
         run: |
-          while true; do
-            OUTPUT=$(gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="echo 'ready'" --ssh-key-file=./gcloud 2>&1)
-            echo "$OUTPUT"
-            if [[ $OUTPUT == *"Permanently added"* ]]; then
-              echo "VM is ready."
-              break
-            else
-              echo "Waiting for VM to be ready..."
-              sleep 5
-            fi
-          done
-          
+          sleep 120
           
       - name: Run init script
         run: |
