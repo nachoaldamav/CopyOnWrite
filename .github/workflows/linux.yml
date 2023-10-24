@@ -38,11 +38,7 @@ jobs:
 
       - name: Generate SSH key pair
         run: |
-          ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N ""
-
-      - name: Set SSH public key
-        run: |
-          echo "SSH_PUBLIC_KEY=$(cat ~/.ssh/id_rsa.pub)" >> $GITHUB_ENV
+          ssh-keygen -t rsa -b 4096 -f ./gcloud -C "${{ secrets.GCP_MAIL }}" -N ""
 
       - name: Fetch available zones and set dynamic zone
         run: |
@@ -52,7 +48,7 @@ jobs:
             REGION=$(echo $ZONE | sed 's/\([a-z]*-[a-z]*[1-9]\)-[a-z]*/\1/')
             QUOTAS_JSON=$(gcloud compute regions describe $REGION --project=${{ secrets.GCP_PROJECT_ID }} --format=json)
             SSD_QUOTA=$(echo $QUOTAS_JSON | jq '.quotas[] | select(.metric == "SSD_TOTAL_GB") | .limit')
-            if (( $(echo "$SSD_QUOTA >= 260" | bc -l) )); then
+            if (( $(echo "$SSD_QUOTA >= 40" | bc -l) )); then
               echo "Selected Zone: $ZONE"
               echo "ZONE=$ZONE" >> $GITHUB_ENV
               break
@@ -72,7 +68,7 @@ jobs:
           --instance-termination-action=DELETE \
           --service-account=${{ secrets.GCP_SERVICE_ACCOUNT }} \
           --create-disk=size=10GB,device-name=$DISK_NAME,mode=rw,type=projects/${{ secrets.GCP_PROJECT_ID }}/zones/${{ env.ZONE }}/diskTypes/pd-balanced \
-          --metadata=ssh-keys="ghaction:${{ env.SSH_PUBLIC_KEY }}"
+          --metadata ssh-keys="${{ secrets.GCP_USER }}:$(cat ./gcloud.pub)"
 
       - name: Wait for VM to be ready
         run: |
@@ -90,26 +86,26 @@ jobs:
           SCRIPT_PATH=scripts/linux-${{ matrix.fs }}.sh
           SCRIPT_CONTENT=$(cat $SCRIPT_PATH)
             gcloud compute ssh $INSTANCE_NAME --zone=${{ env.ZONE }} \
-                --ssh-key-file=~/.ssh/id_rsa \
+                --ssh-key-file=./gcloud \
                 --command="echo '$SCRIPT_CONTENT' > init-script.sh && chmod +x init-script.sh && ./init-script.sh"
 
       - name: Copy Repo to GCP VM
         run: |
           REPO_NAME=$(basename $(git rev-parse --show-toplevel))
-          gcloud compute scp --recurse ../$REPO_NAME ghaction@$INSTANCE_NAME:/mnt/${{ matrix.fs }}/code --zone=${{ env.ZONE }} --ssh-key-file=~/.ssh/id_rsa
+          gcloud compute scp --recurse ../$REPO_NAME ${{ secrets.GCP_USER }}@$INSTANCE_NAME:/mnt/${{ matrix.fs }}/code --zone=${{ env.ZONE }} --ssh-key-file=./gcloud
 
       - name: List files on VM
         run: |
           REPO_NAME=$(basename $(git rev-parse --show-toplevel))
-          gcloud compute ssh ghaction@$INSTANCE_NAME --zone=${{ env.ZONE }} \
-            --ssh-key-file=~/.ssh/id_rsa \
+          gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --zone=${{ env.ZONE }} \
+            --ssh-key-file=./gcloud \
             --command="ls -la /mnt/${{ matrix.fs }}/code/$REPO_NAME"
 
       - name: Run Tests as New User
         run: |
           REPO_NAME=$(basename $(git rev-parse --show-toplevel))
-          gcloud compute ssh ghaction@$INSTANCE_NAME --zone=${{ env.ZONE }} \
-            --ssh-key-file=~/.ssh/id_rsa \
+          gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --zone=${{ env.ZONE }} \
+            --ssh-key-file=./gcloud \
             --command="cd /mnt/${{ matrix.fs }}/code/$REPO_NAME && cargo test"
 
       # Cleanup
