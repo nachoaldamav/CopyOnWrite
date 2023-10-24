@@ -64,25 +64,25 @@ jobs:
       - name: Copy the repo
         run: |
             REPO_NAME=$(basename $(git rev-parse --show-toplevel))
-            gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="powershell -Command \"mkdir D:\\\\code\\\\$REPO_NAME\"" --ssh-key-file=./gcloud
-            gcloud compute scp --recurse --zone=us-central1-a ../$REPO_NAME $INSTANCE_NAME:"D:\code" --ssh-key-file=./gcloud
+            gcloud compute ssh $INSTANCE_NAME --zone=us-east1-b --command="powershell -Command \"mkdir D:\\\\code\\\\$REPO_NAME\"" --ssh-key-file=./gcloud
+            gcloud compute scp --recurse --zone=us-east1-b ../$REPO_NAME $INSTANCE_NAME:"D:\code" --ssh-key-file=./gcloud
       
       - name: List files in project directory
         run: |
           REPO_NAME=$(basename $(git rev-parse --show-toplevel))
-          gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="powershell -Command \"cd D:\\\\code\\\\$REPO_NAME; ls\"" --ssh-key-file=./gcloud
+          gcloud compute ssh $INSTANCE_NAME --zone=us-east1-b --command="powershell -Command \"cd D:\\\\code\\\\$REPO_NAME; ls\"" --ssh-key-file=./gcloud
   
       - name: Run tests
         run: |
           REPO_NAME=$(basename $(git rev-parse --show-toplevel))
-          gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="powershell -Command \"\cd D:\\\\code\\\\$REPO_NAME; cargo test\"" --ssh-key-file=./gcloud
+          gcloud compute ssh $INSTANCE_NAME --zone=us-east1-b --command="powershell -Command \"\cd D:\\\\code\\\\$REPO_NAME; cargo test\"" --ssh-key-file=./gcloud
   
       # Cleanup
       - name: Delete GCP VM if exists
         if: always()
         run: |
-          if gcloud compute instances describe $INSTANCE_NAME --zone=us-central1-a > /dev/null 2>&1; then
-            gcloud compute instances delete $INSTANCE_NAME --zone=us-central1-a --quiet
+          if gcloud compute instances describe $INSTANCE_NAME --zone=us-east1-b > /dev/null 2>&1; then
+            gcloud compute instances delete $INSTANCE_NAME --zone=us-east1-b --quiet
           else
             echo "VM does not exist. Skipping deletion."
           fi
@@ -90,8 +90,8 @@ jobs:
       - name: Delete GCP Disk if exists
         if: always()
         run: |
-          if gcloud compute disks describe $DISK_NAME --zone=us-central1-a > /dev/null 2>&1; then
-            gcloud compute disks delete $DISK_NAME --zone=us-central1-a --quiet --async
+          if gcloud compute disks describe $DISK_NAME --zone=us-east1-b > /dev/null 2>&1; then
+            gcloud compute disks delete $DISK_NAME --zone=us-east1-b --quiet --async
           else
             echo "Disk does not exist. Skipping deletion."
           fi
