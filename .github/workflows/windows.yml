@@ -77,13 +77,13 @@ jobs:
       
       - name: List files in project directory
         run: |
-            REPO_NAME=$(basename $(git rev-parse --show-toplevel))
-            gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="powershell.exe -Command 'cd D:\\code\\$REPO_NAME; ls'" --ssh-key-file=./gcloud
-    
+          REPO_NAME=$(basename $(git rev-parse --show-toplevel))
+          gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="powershell.exe -Command \"cd D:\\\\code\\\\$REPO_NAME; ls\"" --ssh-key-file=./gcloud
+  
       - name: Run tests
         run: |
           # Cargo is installed at $env:USERPROFILE\.cargo\bin
-          gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="powershell.exe -Command '$env:Path = $env:Path + \";$env:USERPROFILE\.cargo\bin\"; cd D:\\code\\$REPO_NAME; cargo test'" --ssh-key-file=./gcloud
+          gcloud compute ssh $INSTANCE_NAME --zone=us-central1-a --command="powershell.exe -Command \"\$env:Path = \$env:Path + ';\$env:USERPROFILE\\.cargo\\\\bin'; cd D:\\\\code\\\\$REPO_NAME; cargo test\"" --ssh-key-file=./gcloud
       
       # Cleanup
       - name: Delete GCP VM if exists
