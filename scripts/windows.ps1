@@ -21,4 +21,5 @@ Write-Host "Finish installing Chocolatey"
 
 Write-Host "Start installing C++ build tools"
 choco install -y visualstudio2019buildtools --package-parameters "--add Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
+choco install -y visualstudio2019community
 Write-Host "Finish installing C++ build tools"
