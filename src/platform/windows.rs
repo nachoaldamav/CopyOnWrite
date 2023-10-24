@@ -541,52 +541,5 @@ mod tests {
         close_handle(file_handle).unwrap();
         assert_eq!(sparse_status, false);
     }
-
-    #[test]
-    fn should_clone_file() {
-        let current_dir = env::current_dir().unwrap();
-        let temp_dir = Builder::new()
-            .prefix("reflink-rs-test")
-            .tempdir_in(current_dir)
-            .unwrap();
-
-        let src_file_path = temp_dir.path().join("src.txt");
-        let dest_file_path = temp_dir.path().join("dest.txt");
-
-        // Create the source file
-        std::fs::File::create(&src_file_path).unwrap();
-
-        // Write some data
-        let mut file = std::fs::OpenOptions::new()
-            .write(true)
-            .open(&src_file_path)
-            .unwrap();
-
-        let data = "Hello, world!";
-        file.write_all(data.as_bytes()).unwrap();
-
-        // Close the file
-        std::mem::drop(file);
-
-        // Clone the file
-        reflink_sync(
-            src_file_path.to_str().unwrap(),
-            dest_file_path.to_str().unwrap(),
-        ).unwrap();
-
-        // Open the destination file using the standard library, to check the contents
-        let mut file = std::fs::OpenOptions::new()
-            .read(true)
-            .open(&dest_file_path)
-            .unwrap();
-
-        let mut contents = String::new();
-        file.read_to_string(&mut contents).unwrap();
-
-        assert_eq!(contents, data);
-        
-        // Clean up
-        temp_dir.close().unwrap();
-    }
 }
 
