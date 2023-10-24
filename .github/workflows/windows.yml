@@ -60,9 +60,9 @@ jobs:
           $(gcloud info --format="value(basic.python_location)") -m pip install numpy
 
       
-      - name: Wait 5 minutes for VM to start
+      - name: Wait 4 minutes for VM to start
         run: |
-          sleep 300
+          sleep 240
           
       - name: Run init script
         run: |
@@ -85,7 +85,6 @@ jobs:
       
       # Cleanup
       - name: Delete GCP VM if exists
-        if: always()
         run: |
           if gcloud compute instances describe $INSTANCE_NAME --zone=us-central1-a > /dev/null 2>&1; then
             gcloud compute instances delete $INSTANCE_NAME --zone=us-central1-a --quiet
@@ -94,7 +93,6 @@ jobs:
           fi
 
       - name: Delete GCP Disk if exists
-        if: always()
         run: |
           if gcloud compute disks describe $DISK_NAME --zone=us-central1-a > /dev/null 2>&1; then
             gcloud compute disks delete $DISK_NAME --zone=us-central1-a --quiet --async
