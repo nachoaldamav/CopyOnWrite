@@ -32,6 +32,11 @@ jobs:
           echo "INSTANCE_NAME=$INSTANCE_NAME" >> $GITHUB_ENV
           echo "DISK_NAME=$DISK_NAME" >> $GITHUB_ENV
 
+      - name: Get Repository Name
+        run: |
+          REPO_NAME=$(basename $(git rev-parse --show-toplevel))
+          echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
+
       - name: Generate SSH key pair
         run: |
           ssh-keygen -t rsa -b 4096 -f ./gcloud -C "${{ secrets.GCP_MAIL }}" -N ""
@@ -53,36 +58,29 @@ jobs:
             --instance-termination-action=DELETE \
             --metadata sysprep-specialize-script-cmd="googet -noconfirm=true install google-compute-engine-ssh",enable-windows-ssh=TRUE,ssh-keys="${{ secrets.GCP_USER }}:$(cat ./gcloud.pub)"
       
-      - name: Install NumPy
-        run: |
-          $(gcloud info --format="value(basic.python_location)") -m pip install numpy
-      
       - name: Wait 1 minute for VM to start
         run: |
           sleep 60
           
       - name: Copy the repo
         run: |
-            REPO_NAME=$(basename $(git rev-parse --show-toplevel))
-            gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --zone=us-east1-b --command="powershell -Command \"mkdir D:\\\\code\\\\$REPO_NAME\"" --ssh-key-file=./gcloud
-            gcloud compute scp --recurse --zone=us-east1-b ../$REPO_NAME ${{ secrets.GCP_USER }}@$INSTANCE_NAME:"D:\code" --ssh-key-file=./gcloud
+            gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --zone=us-east1-b --command="powershell -Command \"mkdir D:\\\\code\\\\${{ env.REPO_NAME }}\"" --ssh-key-file=./gcloud
+            gcloud compute scp --recurse --zone=us-east1-b ../${{ env.REPO_NAME }} ${{ secrets.GCP_USER }}@$INSTANCE_NAME:"D:\code" --ssh-key-file=./gcloud
       
       - name: List files in project directory
-        run: |
-          REPO_NAME=$(basename $(git rev-parse --show-toplevel))
-          gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --zone=us-east1-b --command="powershell -Command \"cd D:\\\\code\\\\$REPO_NAME; ls\"" --ssh-key-file=./gcloud
+        run: 
+          gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --zone=us-east1-b --command="powershell -Command \"cd D:\\\\code\\\\${{ env.REPO_NAME }}; ls\"" --ssh-key-file=./gcloud
   
       - name: Run tests
-        run: |
-          REPO_NAME=$(basename $(git rev-parse --show-toplevel))
-          gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --zone=us-east1-b --command="powershell -Command \"cd D:\\\\code\\\\$REPO_NAME; cargo test\"" --ssh-key-file=./gcloud
+        run: 
+          gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --zone=us-east1-b --command="powershell -Command \"cd D:\\\\code\\\\${{ env.REPO_NAME }}; cargo test\"" --ssh-key-file=./gcloud
   
       # Cleanup
       - name: Delete GCP VM if exists
         if: always()
         run: |
-          if gcloud compute instances describe ${{ secrets.GCP_USER }}@$INSTANCE_NAME --zone=us-east1-b > /dev/null 2>&1; then
-            gcloud compute instances delete ${{ secrets.GCP_USER }}@$INSTANCE_NAME --zone=us-east1-b --quiet
+          if gcloud compute instances describe $INSTANCE_NAME --zone=us-east1-b > /dev/null 2>&1; then
+            gcloud compute instances delete $INSTANCE_NAME --zone=us-east1-b --quiet
           else
             echo "VM does not exist. Skipping deletion."
           fi
