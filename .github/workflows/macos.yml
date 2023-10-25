@@ -1,0 +1,25 @@
+name: E2E MacOS (GitHub Actions)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+    macos-e2e:
+        runs-on: macos-latest
+        steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+        
+        - name: Setup Rust
+          uses: actions-rs/toolchain@v1
+          with:
+                profile: minimal
+                toolchain: stable
+                override: true
+
+        - name: Run Tests
+          run: cargo test
+      

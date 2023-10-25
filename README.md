@@ -7,9 +7,9 @@
 | Linux       | btrfs       | [![E2E Linux (btrfs)](https://github.com/nachoaldamav/CopyOnWrite/actions/workflows/linux.yml/badge.svg?branch=main)](https://github.com/nachoaldamav/CopyOnWrite/actions/workflows/linux.yml)  |
 | Linux       | xfs         | [![E2E Linux (xfs)](https://github.com/nachoaldamav/CopyOnWrite/actions/workflows/linux.yml/badge.svg?branch=main)](https://github.com/nachoaldamav/CopyOnWrite/actions/workflows/linux.yml)        |
 | Windows     | ReFS        | [![E2E Windows (ReFS)](https://github.com/nachoaldamav/CopyOnWrite/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/nachoaldamav/CopyOnWrite/actions/workflows/windows.yml) |
-| MacOS       | APFS        | |
+| MacOS       | APFS        | [![E2E MacOS (APFS)](https://github.com/nachoaldamav/CopyOnWrite/actions/workflows/macos.yml/badge.svg?branch=main)](https://github.com/nachoaldamav/CopyOnWrite/actions/workflows/macos.yml)   |
 
-> Note: All the tests run in Google Cloud VMs with the correct filesystem, this way we ensure the tests run correctly.
+> Note: Linux and Windows tests run in Google Cloud VMs to ensure the correct file system is used. MacOS tests run only GitHub Actions.
 
 ## Description
 
