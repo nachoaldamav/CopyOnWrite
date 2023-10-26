@@ -44,11 +44,11 @@ mod tests {
     fn test_reflink_file_sync() {
         // Create a temporary directory inside the Current Working Directory
         let tmp_dir = Builder::new()
-            .prefix("test_reflink_file_sync")
+            .prefix("test_reflink")
             .tempdir_in(std::env::current_dir().unwrap())
             .unwrap();
-        let src = tmp_dir.path().join("test_reflink_file_sync_src");
-        let dest = tmp_dir.path().join("test_reflink_file_sync_dest");
+        let src = tmp_dir.path().join("src.txt");
+        let dest = tmp_dir.path().join("dest.txt");
 
         // Create a file
         create_file(src.to_str().unwrap());
