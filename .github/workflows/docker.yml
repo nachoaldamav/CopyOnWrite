@@ -21,7 +21,7 @@ jobs:
       - name: Install Docker Desktop
         run: |
           brew install --cask docker
-          open --background -a Docker
+          open --background -a docker
           sleep 60
 
       - name: Install Docker Compose
