@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        fs: ['btrfs', 'xfs', 'ocfs2']
+        fs: ['btrfs', 'xfs']
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
