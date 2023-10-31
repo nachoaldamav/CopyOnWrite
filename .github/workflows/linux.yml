@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        fs: ['btrfs', 'xfs']
+        fs: ['btrfs', 'xfs', 'ocfs2']
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
