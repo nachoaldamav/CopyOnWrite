@@ -26,9 +26,9 @@ jobs:
 
       - name: Build and push
         run: |
-          docker buildx build . -t docker-e2e
+          docker buildx build . -t docker-e2e --load
 
       - name: Run
         run: |
-          docker run --rm -it --privileged --name docker-e2e
+          docker run --name docker-e2e
         
