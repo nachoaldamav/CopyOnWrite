@@ -10,7 +10,7 @@ echo "::endgroup::"
 echo "::group::Prepare Disk"
 sudo mkdir -p /mnt/ocfs2
 sudo mkfs.ocfs2 -b 4K -C 32K -L "OCFS2Volume" /dev/sdb
-sudo mount -t ocfs2 /dev/sdb /mnt/ocfs2
+sudo mount -t ocfs2 -o local /dev/sdb /mnt/ocfs2
 echo "::endgroup::"
 
 # Create "code" directory in the OCFS2 volume
