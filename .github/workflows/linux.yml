@@ -10,6 +10,7 @@ jobs:
   linux-e2e:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         fs: ['btrfs', 'xfs', 'ocfs2']
     steps:
