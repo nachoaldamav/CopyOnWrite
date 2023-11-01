@@ -19,14 +19,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Docker Desktop
-        run: |
-          brew install --cask docker
-          open --background -a docker
-          sleep 60
+        run: brew install docker
           
       - name: Log current Docker storage driver
-        run: |
-          docker info
+        run: docker info
 
       - name: Build and push
         run: |
