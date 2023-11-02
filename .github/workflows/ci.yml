@@ -77,6 +77,7 @@ jobs:
               issue_number: issue_number,
               body: 'Please approve this PR by reacting with an "ok" emoji to this comment.'
             });
+            core.setOutput('result', comment.data.id);
             return comment.data.id;
           
       - name: Wait for Approval
