@@ -64,7 +64,7 @@ jobs:
 
       - name: Auto Approve
         run: |
-          echo "PR is from a team member, auto approving."
+          echo "Is not a PR, auto approving."
 
   windows-tests:
     needs: [require-approval, get-team-members]

@@ -41,12 +41,30 @@ jobs:
       - name: Set default project
         run: |
           gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
+      
+      - name: Fetch available zones and set dynamic zone
+        run: |
+          sudo apt-get install -y jq
+          AVAILABLE_ZONES=$(gcloud compute zones list --project=${{ secrets.GCP_PROJECT_ID }} --format="value(name)")
+          for ZONE in $AVAILABLE_ZONES; do
+            REGION=$(echo $ZONE | sed 's/\([a-z]*-[a-z]*[1-9]\)-[a-z]*/\1/')
+            QUOTAS_JSON=$(gcloud compute regions describe $REGION --project=${{ secrets.GCP_PROJECT_ID }} --format=json)
+            SSD_QUOTA=$(echo $QUOTAS_JSON | jq '.quotas[] | select(.metric == "SSD_TOTAL_GB") | .limit')
+            if (( $(echo "$SSD_QUOTA >= 100" | bc -l) )); then
+              echo "Selected Zone: $ZONE"
+              echo "ZONE=$ZONE" >> $GITHUB_ENV
+              break
+            fi
+          done
+
+      - name: Set default zone
+        run: |
+          gcloud config set compute/zone ${{ env.ZONE }}
 
       - name: Create GCP VM with Spot provisioning
         run: |
           gcloud compute instances create $INSTANCE_NAME \
             --project=${{ secrets.GCP_PROJECT_ID }} \
-            --zone=us-east1-b \
             --machine-type=e2-medium \
             --source-machine-image=windows-rs \
             --no-restart-on-failure \
@@ -61,23 +79,23 @@ jobs:
           
       - name: Copy the repo
         run: |
-            gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --zone=us-east1-b --command="powershell -Command \"mkdir D:\\\\code\\\\${{ env.REPO_NAME }}\"" --ssh-key-file=./gcloud
-            gcloud compute scp --recurse --zone=us-east1-b ../${{ env.REPO_NAME }} ${{ secrets.GCP_USER }}@$INSTANCE_NAME:"D:\code" --ssh-key-file=./gcloud
+            gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --command="powershell -Command \"mkdir D:\\\\code\\\\${{ env.REPO_NAME }}\"" --ssh-key-file=./gcloud
+            gcloud compute scp --recurse ../${{ env.REPO_NAME }} ${{ secrets.GCP_USER }}@$INSTANCE_NAME:"D:\code" --ssh-key-file=./gcloud
       
       - name: List files in project directory
         run: 
-          gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --zone=us-east1-b --command="powershell -Command \"cd D:\\\\code\\\\${{ env.REPO_NAME }}; ls\"" --ssh-key-file=./gcloud
+          gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --command="powershell -Command \"cd D:\\\\code\\\\${{ env.REPO_NAME }}; ls\"" --ssh-key-file=./gcloud
   
       - name: Run tests
         run: 
-          gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --zone=us-east1-b --command="powershell -Command \"cd D:\\\\code\\\\${{ env.REPO_NAME }}; cargo test\"" --ssh-key-file=./gcloud
+          gcloud compute ssh ${{ secrets.GCP_USER }}@$INSTANCE_NAME --command="powershell -Command \"cd D:\\\\code\\\\${{ env.REPO_NAME }}; cargo test\"" --ssh-key-file=./gcloud
   
       # Cleanup
       - name: Delete GCP VM if exists
         if: always()
         run: |
-          if gcloud compute instances describe $INSTANCE_NAME --zone=us-east1-b > /dev/null 2>&1; then
-            gcloud compute instances delete $INSTANCE_NAME --zone=us-east1-b --quiet
+          if gcloud compute instances describe $INSTANCE_NAME > /dev/null 2>&1; then
+            gcloud compute instances delete $INSTANCE_NAME --quiet
           else
             echo "VM does not exist. Skipping deletion."
           fi
@@ -85,8 +103,8 @@ jobs:
       - name: Delete GCP Disk if exists
         if: always()
         run: |
-          if gcloud compute disks describe $DISK_NAME --zone=us-east1-b > /dev/null 2>&1; then
-            gcloud compute disks delete $DISK_NAME --zone=us-east1-b --quiet
+          if gcloud compute disks describe $DISK_NAME > /dev/null 2>&1; then
+            gcloud compute disks delete $DISK_NAME --quiet
           else
             echo "Disk does not exist. Skipping deletion."
           fi
