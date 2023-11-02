@@ -14,13 +14,11 @@ jobs:
     outputs:
       team-members: ${{ steps.get-team-members.outputs.team-members }}
     steps:
-      - name: Get team members from GitHub API
+      - name: Get team members list
         id: get-team-members
         run: |
-          TEAM_MEMBERS=$(gh api /orgs/pnpm/teams/collaborators/members --paginate | jq -r '.[].login' | paste -sd, -)
+          TEAM_MEMBERS="nachoaldamav"
           echo "team-members=$TEAM_MEMBERS" >> $GITHUB_OUTPUT
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   
   check-author:
     runs-on: ubuntu-latest
