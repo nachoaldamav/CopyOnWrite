@@ -3,7 +3,7 @@ name = "copy_on_write"
 version = "0.1.0"
 edition = "2021"
 description = "Copy-On-Write Rust implementation."
-license = "EUPL-1.2"
+license = "MIT"
 
 [dependencies]
 env_logger = { version = "0.10.0", features = ["auto-color", "color"] }
