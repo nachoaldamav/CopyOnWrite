@@ -66,12 +66,12 @@ jobs:
 
   windows-tests:
     needs: [require-approval, get-team-members]
-    uses: ./.github/workflows/windows.yml@${{ github.ref_name }}
+    uses: ./.github/workflows/windows.yml
 
   macos-tests:
     needs: [require-approval, get-team-members]
-    uses: ./.github/workflows/macos.yml@${{ github.ref_name }}
+    uses: ./.github/workflows/macos.yml
 
   linux-tests:
     needs: [require-approval, get-team-members]
-    uses: ./.github/workflows/linux.yml@${{ github.ref_name }}
+    uses: ./.github/workflows/linux.yml
