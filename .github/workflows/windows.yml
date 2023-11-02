@@ -1,10 +1,7 @@
 name: E2E Windows (Google Cloud)
 
 on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
+  workflow_call:
 
 jobs:
   windows-e2e:
