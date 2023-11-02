@@ -46,6 +46,7 @@ jobs:
         uses: actions/github-script@v6    
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          result-encoding: string
           script: |
             const issue_number = context.issue.number;
             const comments = await github.rest.issues.listComments({
@@ -60,15 +61,16 @@ jobs:
               return approvalComment.id;
             } else {
               core.setOutput('commentExists', 'false');
-              return '';
+              return 'false';
             }
           
       - name: Create Approval Comment
-        if: steps.check-comment.outputs.commentExists == 'false'
+        if: steps.check-comment.outputs.result == 'false'
         id: create-comment
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          result-encoding: string
           script: |
             const issue_number = context.issue.number;
             await github.rest.issues.createComment({
@@ -78,13 +80,15 @@ jobs:
               body: 'Please approve this PR by reacting with an "👍".'
             });
             core.setOutput('commentCreated', 'true');
+            return 'true';
           
       - name: Get Comment ID
-        if: steps.create-comment.outputs.commentCreated == 'true'
+        if: steps.create-comment.outputs.result == 'true'
         id: get-comment-id
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          result-encoding: string
           script: |
             const issue_number = context.issue.number;
             await new Promise(r => setTimeout(r, 5000)); // 5-second delay
@@ -96,6 +100,7 @@ jobs:
             const approvalComment = comments.data.find(comment => comment.body.includes('Please approve this PR by reacting with an "👍".') && comment.user.login === 'github-actions[bot]');
             if (approvalComment) {
               core.setOutput('commentId', approvalComment.id.toString());
+              return approvalComment.id.toString();
             }
           
       - name: Wait for Approval
