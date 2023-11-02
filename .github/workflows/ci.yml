@@ -69,6 +69,16 @@ jobs:
   windows-tests:
     needs: [require-approval, get-team-members]
     uses: ./.github/workflows/windows.yml
+    with:
+        GCP_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS }}
+        GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+        GCP_USER: ${{ secrets.GCP_USER }}
+        GCP_MAIL: ${{ secrets.GCP_MAIL }}
+    secrets:
+        GCP_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS }}
+        GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+        GCP_USER: ${{ secrets.GCP_USER }}
+        GCP_MAIL: ${{ secrets.GCP_MAIL }}
 
   macos-tests:
     needs: [require-approval, get-team-members]
@@ -77,3 +87,13 @@ jobs:
   linux-tests:
     needs: [require-approval, get-team-members]
     uses: ./.github/workflows/linux.yml
+    with:
+        GCP_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS }}
+        GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+        GCP_USER: ${{ secrets.GCP_USER }}
+        GCP_MAIL: ${{ secrets.GCP_MAIL }}
+    secrets:
+        GCP_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS }}
+        GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+        GCP_USER: ${{ secrets.GCP_USER }}
+        GCP_MAIL: ${{ secrets.GCP_MAIL }}
