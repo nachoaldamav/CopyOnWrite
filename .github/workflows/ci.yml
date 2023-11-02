@@ -73,11 +73,19 @@ jobs:
           result-encoding: string
           script: |
             const issue_number = context.issue.number;
-            await github.rest.issues.createComment({
+            const pr_creator = context.payload.pull_request.user.login;
+            const team_members = process.env.TEAM_MEMBERS;
+            const team_members_mentions = team_members.split(', ').map(u => `@${u}`).join(' ');
+            const body = '## Tests Approval\n\n' +
+                          '> This system is designed to prevent abuse of the testing resources.\n\n' +
+                          '---\n\n' +
+                          `${team_members_mentions}, approve this PR to continue with the tests.\n\n` +
+                          `@${pr_creator} Please, wait until this PR is approved by a team member.`;
+            const comment = await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: issue_number,
-              body: 'Please approve this PR by reacting with an "👍".'
+              body: body
             });
             core.setOutput('commentCreated', 'true');
             return 'true';
