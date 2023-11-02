@@ -61,21 +61,10 @@ jobs:
               reviewers: ['nachoaldamav']
             });
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          
+
       - name: Auto Approve
-        uses: actions/github-script@v6
-        if: ${{ needs.check-author.outputs.is-external == 'false' }}
-        with:
-          script: |
-            const prNumber = context.payload.pull_request.number;
-            const repo = context.repo;
-            github.rest.pulls.createReview({
-              owner: repo.owner,
-              repo: repo.repo,
-              pull_number: prNumber,
-              event: 'APPROVE'
-            });
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "PR is from a team member, auto approving."
 
   windows-tests:
     needs: [require-approval, get-team-members]
