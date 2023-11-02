@@ -1,0 +1,148 @@
+name: E2E Tests
+
+on:
+  pull_request:
+    branches:
+      - '**'
+  push:
+    branches:
+      - 'main'
+
+env:
+  TEAM_MEMBERS: "nachoaldamav"
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  check-author:
+    runs-on: ubuntu-latest
+    outputs:
+      is-external: ${{ steps.check-author.outputs.is-external }}
+    steps:
+      - name: Check if PR is from a team member
+        id: check-author
+        run: |
+          if [ "${{ github.event.pull_request }}" != "" ]; then
+          if echo "$TEAM_MEMBERS" | grep -q "${{ github.actor }}"; then
+            echo "PR is from a team member."
+            echo "is-external=false" >> $GITHUB_OUTPUT
+          else
+            echo "PR is from an external contributor."
+            echo "is-external=true" >> $GITHUB_OUTPUT
+          fi
+          else
+            echo "Not a PR, running the workflow."
+            echo "is-external=false" >> $GITHUB_OUTPUT
+          fi
+
+  require-approval:
+    runs-on: ubuntu-latest
+    needs: check-author
+    steps:
+      - name: Check for existing approval comment
+        id: check-comment
+        if: steps.check-author.outputs.is-external == 'true'
+        uses: actions/github-script@v6    
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          result-encoding: string
+          script: |
+            const issue_number = context.issue.number;
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue_number,
+            });
+            const approvalComment = comments.data.find(comment => comment.body.includes('approve this PR to continue with the tests.') && comment.user.login === 'github-actions[bot]');
+            if (approvalComment) {
+              core.setOutput('commentExists', 'true');
+              core.setOutput('commentId', approvalComment.id);
+              return approvalComment.id;
+            } else {
+              core.setOutput('commentExists', 'false');
+              return 'false';
+            }
+          
+      - name: Create Approval Comment
+        if: steps.check-comment.outputs.result == 'false' && steps.check-author.outputs.is-external == 'true'
+        id: create-comment
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          result-encoding: string
+          script: |
+            const issue_number = context.issue.number;
+            const pr_creator = context.payload.pull_request.user.login;
+            const team_members = process.env.TEAM_MEMBERS;
+            const team_members_mentions = team_members.split(', ').map(u => `@${u}`).join(' ');
+            const body = '## Tests Approval\n\n' +
+                          '> This system is designed to prevent abuse of the testing resources.\n\n' +
+                          '---\n\n' +
+                          `${team_members_mentions}, approve this PR to continue with the tests.\n\n` +
+                          `@${pr_creator} Please, wait until this PR is approved by a team member.`;
+            const comment = await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue_number,
+              body: body
+            });
+            return comment.data.id.toString();
+          
+      - name: Wait for Approval
+        id: wait-for-approval
+        if: steps.check-comment.outputs.result != 'false' && steps.check-author.outputs.is-external == 'true'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issue_number = context.issue.number;
+            let comment_id = ${{ steps.check-comment.outputs.result != 'false' && steps.check-comment.outputs.result || steps.create-comment.outputs.result }};
+            console.log(`Comment ID: ${comment_id}`);
+      
+            let approved = false;
+            let counter = 0;
+      
+            while (counter < 15 && !approved) {
+              console.log(`Checking for approvals, attempt ${counter + 1}`);
+              let reactions = await github.rest.reactions.listForIssueComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: comment_id
+              });
+      
+              if (reactions.data.find(reaction => reaction.content === '+1')) {
+                approved = true;
+                console.log("PR has been approved by a team member.");
+                break;
+              }
+      
+              console.log("Retrying in 60 seconds...");
+              await new Promise(r => setTimeout(r, 60000)); // wait for 60 seconds
+              counter++;
+            }
+      
+            if (counter >= 15) {
+              core.setFailed("Timeout reached for Approval - 15m. Exiting...");
+            }
+        
+      - name: Auto-approved
+        if: steps.check-author.outputs.is-external == 'false'
+        run: |
+          echo "PR is from a team member."
+          
+
+  windows-tests:
+    needs: [check-author, require-approval]
+    uses: ./.github/workflows/windows.yml
+    secrets: inherit
+
+  macos-tests:
+    needs: [check-author, require-approval]
+    uses: ./.github/workflows/macos.yml
+
+  linux-tests:
+    needs: [check-author, require-approval]
+    uses: ./.github/workflows/linux.yml
+    secrets: inherit

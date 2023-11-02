@@ -1,11 +1,8 @@
 name: E2E MacOS (GitHub Actions)
 
 on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
-
+  workflow_call:
+    
 jobs:
     macos-e2e:
         runs-on: macos-latest
