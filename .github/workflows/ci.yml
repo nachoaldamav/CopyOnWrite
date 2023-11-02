@@ -21,16 +21,17 @@ jobs:
         id: check-author
         run: |
           if [ "${{ github.event.pull_request }}" != "" ]; then
-            if echo "$TEAM_MEMBERS" | grep -q "${{ github.actor }}"; then
-              echo "PR is from a team member."
-              echo "is-external=false" >> $GITHUB_ENV
-            else
-              echo "PR is from an external contributor."
-              echo "is-external=true" >> $GITHUB_ENV
-            fi
+          if echo "$TEAM_MEMBERS" | grep -q "${{ github.actor }}"; then
+            echo "PR is from a team member."
+            echo "is-external=false" >> $GITHUB_ENV
+          else
+            echo "PR is from an external contributor."
+            echo "is-external=true" >> $GITHUB_ENV
+          fi
           else
             echo "Not a PR, running the workflow."
             echo "is-external=false" >> $GITHUB_ENV
+          fi
 
   require-approval:
     runs-on: ubuntu-latest
