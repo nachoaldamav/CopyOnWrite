@@ -10,10 +10,10 @@ use platform::windows::reflink_sync;
 #[cfg(not(target_os = "windows"))]
 use reflink_copy::reflink as reflink_sync;
 
-pub fn reflink_file_sync(src: &str, dest: &str) -> std::io::Result<()> {
+pub fn reflink_file_sync(src: impl AsRef<str>, dest: impl AsRef<str>) -> std::io::Result<()> {
     // Convert to absolute paths
-    let src_abs: PathBuf = absolute(src)?;
-    let dest_abs: PathBuf = absolute(dest)?;
+    let src_abs: PathBuf = absolute(src.as_ref())?;
+    let dest_abs: PathBuf = absolute(dest.as_ref())?;
 
     #[cfg(target_os = "windows")]
     {
