@@ -51,13 +51,16 @@ jobs:
             });
             const approvalComment = comments.data.find(comment => comment.body.includes('Please approve this PR by reacting with an "ok" emoji to this comment.') && comment.user.login === 'github-actions[bot]');
             if (approvalComment) {
+              core.setOutput('commentExists', 'true');
+              core.setOutput('commentId', approvalComment.id);
               return approvalComment.id;
             } else {
+              core.setOutput('commentExists', 'false');
               return '';
             }
           
       - name: Create Approval Comment
-        if: steps.check-comment.outputs.result == ''
+        if: steps.check-comment.outputs.commentExists == 'false'
         id: create-comment
         uses: actions/github-script@v6
         with:
