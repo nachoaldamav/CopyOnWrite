@@ -11,6 +11,10 @@ on:
 env:
   TEAM_MEMBERS: "nachoaldamav"
 
+permissions:
+  issues: write
+  pull-requests: write
+
 jobs:
   check-author:
     runs-on: ubuntu-latest
@@ -39,10 +43,11 @@ jobs:
     steps:
       - name: Check for existing approval comment
         id: check-comment
-        uses: actions/github-script@v6
+        uses: actions/github-script@v6    
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const core = require('@actions/core');
             const issue_number = context.issue.number;
             const comments = await github.rest.issues.listComments({
               owner: context.repo.owner,
