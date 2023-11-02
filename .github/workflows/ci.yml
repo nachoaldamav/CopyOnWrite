@@ -104,28 +104,41 @@ jobs:
             }
           
       - name: Wait for Approval
-        run: |
-          comment_id=${{ steps.check-comment.outputs.result != 'false' && steps.check-comment.outputs.result || steps.get-comment-id.outputs.result }}
-          echo "Comment ID: $comment_id"
-          counter=0
-          while [ $counter -lt 15 ]; do
-            echo "Checking for approvals, attempt $((counter + 1))"
-            response=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -H "Accept: application/vnd.github.squirrel-girl-preview+json" "https://api.github.com/repos/${{ github.repository }}/issues/comments/$comment_id/reactions")
-            echo "Response: $response"
-            approved=$(echo "$response" | jq '.[] | select(.content == "+1") | .user.login')
-            echo "Approved: $approved"
-            if [ -n "$approved" ]; then
-              echo "PR has been approved by a team member."
-              break
-            fi
-            sleep 60
-            ((counter++))
-          done
-
-          if [ $counter -ge 15 ]; then
-            echo "Timeout reached for Approval - 15m. Exiting..."
-            exit 1
-          fi
+        id: wait-for-approval
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issue_number = context.issue.number;
+            let comment_id = ${{ steps.check-comment.outputs.result != 'false' && steps.check-comment.outputs.result || steps.get-comment-id.outputs.result }};
+            console.log(`Comment ID: ${comment_id}`);
+      
+            let approved = false;
+            let counter = 0;
+      
+            while (counter < 15 && !approved) {
+              console.log(`Checking for approvals, attempt ${counter + 1}`);
+              let reactions = await github.rest.reactions.listForIssueComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: comment_id
+              });
+      
+              if (reactions.data.find(reaction => reaction.content === '+1')) {
+                approved = true;
+                console.log("PR has been approved by a team member.");
+                break;
+              }
+      
+              console.log("Retrying in 60 seconds...");
+              await new Promise(r => setTimeout(r, 60000)); // wait for 60 seconds
+              counter++;
+            }
+      
+            if (counter >= 15) {
+              core.setFailed("Timeout reached for Approval - 15m. Exiting...");
+            }
+          
 
   windows-tests:
     needs: [require-approval]
