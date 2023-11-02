@@ -71,18 +71,36 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const issue_number = context.issue.number;
-            const comment = await github.rest.issues.createComment({
+            await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: issue_number,
               body: 'Please approve this PR by reacting with an "👍".'
             });
-            core.setOutput('result', comment.data.id);
-            return comment.data.id;
+            core.setOutput('commentCreated', 'true');
+          
+      - name: Get Comment ID
+        if: steps.create-comment.outputs.commentCreated == 'true'
+        id: get-comment-id
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issue_number = context.issue.number;
+            await new Promise(r => setTimeout(r, 5000)); // 5-second delay
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue_number,
+            });
+            const approvalComment = comments.data.find(comment => comment.body.includes('Please approve this PR by reacting with an "👍".') && comment.user.login === 'github-actions[bot]');
+            if (approvalComment) {
+              core.setOutput('commentId', approvalComment.id.toString());
+            }
           
       - name: Wait for Approval
         run: |
-          comment_id=${{ steps.check-comment.outputs.result || steps.create-comment.outputs.result }}
+          comment_id=${{ steps.check-comment.outputs.result ||  steps.get-comment-id.outputs.commentId}}
           echo "Comment ID: $comment_id"
           counter=0
           while [ $counter -lt 15 ]; do
