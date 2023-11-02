@@ -36,8 +36,6 @@ jobs:
   require-approval:
     runs-on: ubuntu-latest
     needs: check-author
-    # Setting as false for testing purposes
-    if: ${{ needs.check-author.outputs.is-external == 'false' }}
     steps:
       - name: Check for existing approval comment
         id: check-comment
