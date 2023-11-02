@@ -87,29 +87,7 @@ jobs:
               issue_number: issue_number,
               body: body
             });
-            core.setOutput('commentCreated', 'true');
-            return 'true';
-          
-      - name: Get Comment ID
-        if: steps.create-comment.outputs.result == 'true'
-        id: get-comment-id
-        uses: actions/github-script@v6
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          result-encoding: string
-          script: |
-            const issue_number = context.issue.number;
-            await new Promise(r => setTimeout(r, 5000)); // 5-second delay
-            const comments = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: issue_number,
-            });
-            const approvalComment = comments.data.find(comment => comment.body.includes('Please approve this PR by reacting with an "👍".') && comment.user.login === 'github-actions[bot]');
-            if (approvalComment) {
-              core.setOutput('commentId', approvalComment.id.toString());
-              return approvalComment.id.toString();
-            }
+            return comment.data.id.toString();
           
       - name: Wait for Approval
         id: wait-for-approval
@@ -118,7 +96,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const issue_number = context.issue.number;
-            let comment_id = ${{ steps.check-comment.outputs.result != 'false' && steps.check-comment.outputs.result || steps.get-comment-id.outputs.result }};
+            let comment_id = ${{ steps.check-comment.outputs.result != 'false' && steps.check-comment.outputs.result || steps.create-comment.outputs.result }};
             console.log(`Comment ID: ${comment_id}`);
       
             let approved = false;
