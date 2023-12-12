@@ -11,9 +11,13 @@ use platform::windows::reflink_sync;
 use reflink_copy::reflink as reflink_sync;
 
 pub fn reflink_file_sync(src: impl AsRef<str>, dest: impl AsRef<str>) -> std::io::Result<()> {
+    // Clone the src and dest before moving them
+    let src_clone = src.as_ref().to_string();
+    let dest_clone = dest.as_ref().to_string();
+
     // Convert to absolute paths
-    let src_abs: PathBuf = absolute(src.as_ref())?;
-    let dest_abs: PathBuf = absolute(dest.as_ref())?;
+    let src_abs: PathBuf = absolute(&src_clone)?;
+    let dest_abs: PathBuf = absolute(&dest_clone)?;
 
     #[cfg(target_os = "windows")]
     {
