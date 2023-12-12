@@ -6,6 +6,9 @@ use std::{
 };
 use widestring::U16CString;
 use windows::Win32::Foundation::CloseHandle;
+use windows::Win32::Storage::FileSystem::FILE_FLAG_NO_BUFFERING;
+use windows::Win32::Storage::FileSystem::FlushFileBuffers;
+use windows::Win32::System::SystemServices::FILE_SUPPORTS_BLOCK_REFCOUNTING;
 use windows::{
     core::PCWSTR,
     Win32::{
@@ -14,7 +17,7 @@ use windows::{
             CreateFileW, FileEndOfFileInfo, FileStandardInfo, GetDiskFreeSpaceW,
             GetFileInformationByHandleEx, GetFileSizeEx, GetVolumeInformationW,
             SetFileInformationByHandle, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, FILE_BASIC_INFO,
-            FILE_END_OF_FILE_INFO, FILE_FLAG_NO_BUFFERING, FILE_SHARE_DELETE, FILE_SHARE_READ,
+            FILE_END_OF_FILE_INFO, FILE_SHARE_DELETE, FILE_SHARE_READ,
             FILE_SHARE_WRITE, OPEN_EXISTING,
         },
         System::{
@@ -34,12 +37,21 @@ pub fn reflink_sync(src: &str, dest: &str) -> std::io::Result<()> {
 
     // Get source volume info
     let source_volume = get_volume_info_for_path(src)?;
+    let dest_volume = get_volume_info_for_path(dest)?;
 
     // Check if the source supports copy-on-write
     if !source_volume.supports_cow {
         return Err(std::io::Error::new(
             std::io::ErrorKind::Other,
             "Source volume does not support copy-on-write",
+        ));
+    }
+
+    // Check if the destination supports copy-on-write
+    if !dest_volume.supports_cow {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "Destination volume does not support copy-on-write",
         ));
     }
 
@@ -60,6 +72,9 @@ pub fn reflink_sync(src: &str, dest: &str) -> std::io::Result<()> {
 
     // Set destination file size
     set_file_size(dest_file_handle, source_file_size)?;
+
+    // Flush buffers
+    flush_file_buffers(dest_file_handle)?;
 
     // Duplicate extents
     duplicate_extents(
@@ -95,7 +110,6 @@ fn open_file(file_path: &str) -> Result<HANDLE, windows::core::Error> {
             FILE_ATTRIBUTE_NORMAL | FILE_FLAG_NO_BUFFERING,
             HANDLE(0),
         )?;
-
         if file_handle.is_invalid() {
             Err(windows::core::Error::from_win32())
         } else {
@@ -313,7 +327,7 @@ fn get_volume_info_for_path(path: &str) -> Result<VolumeInfo, windows::core::Err
         )?;
     }
 
-    let supports_cow = (file_system_flags & 0x00000040) != 0;
+    let supports_cow = (file_system_flags & FILE_SUPPORTS_BLOCK_REFCOUNTING) != 0;
 
     let mut sectors_per_cluster = 0;
     let mut bytes_per_sector = 0;
@@ -401,11 +415,21 @@ fn close_handle(handle: HANDLE) -> Result<(), windows::core::Error> {
     Ok(())
 }
 
+fn flush_file_buffers(file_handle: HANDLE) -> Result<(), windows::core::Error> {
+    unsafe {
+        if FlushFileBuffers(file_handle).is_ok() {
+            Ok(())
+        } else {
+            Err(windows::core::Error::from_win32())
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile;
     use std::io::Write;
+    use tempfile;
 
     #[test]
     fn should_open_file() {
@@ -528,7 +552,8 @@ mod tests {
         let file_path = "C:\\Windows\\System32\\notepad.exe";
         let volume_info = get_volume_info_for_path(file_path).unwrap();
 
-        assert!(volume_info.supports_cow);
+        // C doesn't support copy-on-write
+        assert!(!volume_info.supports_cow);
         assert_eq!(volume_info.cluster_size > 0, true);
     }
 
@@ -541,4 +566,3 @@ mod tests {
         assert_eq!(sparse_status, false);
     }
 }
-
