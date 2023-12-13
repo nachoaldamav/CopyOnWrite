@@ -36,8 +36,10 @@ pub fn reflink_sync(src: &str, dest: &str) -> std::io::Result<()> {
     let source_file_handle = open_file(src)?;
 
     // Get source volume info
-    let source_volume = get_volume_info_for_path(src)?;
-    let dest_volume = get_volume_info_for_path(dest)?;
+    let source_volume = get_volume_info_for_path(src).expect("Failed to get source volume info");
+
+    // If getting the destination volume info fails, use the source volume info
+    let dest_volume = get_volume_info_for_path(dest).expect("Failed to get destination volume info");
 
     // Check if the source supports copy-on-write
     if !source_volume.supports_cow {
@@ -294,8 +296,12 @@ lazy_static::lazy_static! {
 
 fn get_volume_info_for_path(path: &str) -> Result<VolumeInfo, windows::core::Error> {
     let drive_letter = match path.chars().next() {
-        Some(c) => c,
-        None => return Err(windows::core::Error::from_win32()),
+        Some(c) if c.is_alphabetic() => c.to_uppercase().next().unwrap(), // Ensure it's uppercase
+        _ => {
+            // Default to current drive if the first character is not a letter
+            let current_dir = std::env::current_dir().map_err(|_| windows::core::Error::from_win32())?;
+            current_dir.to_str().unwrap().chars().next().unwrap()
+        }
     };
     let drive_root = format!("{}:\\", drive_letter);
 
