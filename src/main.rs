@@ -3,6 +3,11 @@ mod platform;
 
 extern crate env_logger;
 
+use futures::future::join_all;
+use tokio::fs::{self, File};
+use tokio::io::{self, AsyncWriteExt};
+use tokio::time::Instant;
+
 #[cfg(target_os = "windows")]
 use platform::windows::reflink_sync;
 
@@ -13,47 +18,117 @@ use reflink_copy::reflink as reflink_sync;
 use reflink_copy::reflink as reflink_sync;
 
 use common::utils::absolute;
-use log::info;
-use std::io::{self, Read};
+use log::{debug, info};
+use std::path::PathBuf;
 
-fn main() {
+async fn create_and_fill_file(path: PathBuf, size: usize) -> io::Result<()> {
+    let mut file = File::create(path).await?;
+    let data = vec![0u8; size];
+    file.write_all(&data).await?;
+    file.sync_all().await
+}
+
+async fn benchmark_operation<F, Fut>(
+    operation: F,
+    src: PathBuf,
+    dest: PathBuf,
+    count: usize,
+) -> Vec<std::time::Duration>
+where
+    F: Fn(PathBuf, PathBuf) -> Fut + Copy,
+    Fut: std::future::Future<Output = io::Result<()>>,
+{
+    let mut durations = Vec::new();
+    for _ in 0..count {
+        let start = Instant::now();
+        operation(src.clone(), dest.clone()).await.unwrap();
+        durations.push(start.elapsed());
+        fs::remove_file(dest.clone()).await.unwrap();
+    }
+    durations
+}
+
+#[tokio::main]
+async fn main() {
     env_logger::init();
 
     info!("Starting up");
 
-    // Convert relative paths to absolute paths
-    let src_absolute = absolute("my-file.txt").unwrap();
-    let dest_absolute = absolute("my-file-copy.txt").unwrap();
+    let file_count = 10; // Number of files to test
+    let file_size = 1 * 1024 * 1024; // Size of each file (1 MB)
 
-    // Create a file with some data (1 MB)
-    info!("Creating a file with some data (1 MB)");
-    let mut file = std::fs::File::create(&src_absolute).unwrap();
-    let mut src = io::repeat(65).take(1 * 1024 * 1024); // 1 MB
-    io::copy(&mut src, &mut file).unwrap();
+    let mut src_files = Vec::new();
+    let mut dest_files = Vec::new();
 
-    // Close the file
-    info!("Closing the file");
-    drop(file);
-
-    // Wait 2 seconds to warm up the disk cache
-    info!("Warming up the disk cache");
-    std::thread::sleep(std::time::Duration::from_secs(2));
-
-    let start_time = std::time::Instant::now();
-
-    let result = reflink_sync(
-        src_absolute.to_str().unwrap_or_default(),
-        dest_absolute.to_str().unwrap_or_default(),
-    );
-
-    let elapsed = start_time.elapsed();
-
-    match result {
-        Ok(_) => println!("Success! Elapsed time: {:?}", elapsed),
-        Err(e) => println!("Error: {}", e),
+    // Prepare test files
+    for i in 0..file_count {
+        let src = absolute(&format!("testfile_{}.txt", i)).unwrap();
+        let dest = absolute(&format!("testfile_{}_copy.txt", i)).unwrap();
+        create_and_fill_file(src.clone(), file_size).await.unwrap();
+        src_files.push(src);
+        dest_files.push(dest);
     }
 
-    // Remove both files
-    std::fs::remove_file(src_absolute).unwrap();
-    std::fs::remove_file(dest_absolute).unwrap();
+    // Benchmark Reflink
+    let reflink_futures = src_files
+        .iter()
+        .zip(dest_files.iter())
+        .map(|(src, dest)| {
+            benchmark_operation(
+                |src, dest| async move {
+                    debug!("RefLinking {} to {}", src.display(), dest.display());
+                    reflink_sync(src.to_str().unwrap(), dest.to_str().unwrap())
+                },
+                src.clone(),
+                dest.clone(),
+                file_count,
+            )
+        })
+        .collect::<Vec<_>>();
+
+    // Benchmark STD Copy
+    let std_copy_futures = src_files
+        .iter()
+        .zip(dest_files.iter())
+        .map(|(src, dest)| {
+            benchmark_operation(
+                |src, dest| async move {
+                    debug!("Copying {} to {}", src.display(), dest.display());
+                    fs::copy(src, dest).await.map(|_| ())
+                },
+                src.clone(),
+                dest.clone(),
+                file_count,
+            )
+        })
+        .collect::<Vec<_>>();
+
+    // Await all futures for completion
+    let reflink_results = join_all(reflink_futures).await;
+    let std_copy_results = join_all(std_copy_futures).await;
+
+    // Print results
+    print_results("RefLink", &reflink_results);
+    print_results("STD Copy", &std_copy_results);
+
+    // Clean up
+    for src in src_files {
+        fs::remove_file(src).await.unwrap();
+    }
+
+    info!("Shutting down");
+}
+
+fn print_results(operation_name: &str, results: &Vec<Vec<std::time::Duration>>) {
+    let mut all_durations = Vec::new();
+    for result in results {
+        all_durations.extend(result.iter());
+    }
+
+    let total_durations: Vec<u128> = all_durations.iter().map(|&d: &std::time::Duration| d.as_millis()).collect();
+    let average: u128 = total_durations.iter().sum::<u128>() / total_durations.len() as u128;
+    let max = total_durations.iter().max().unwrap_or(&0);
+    let min = total_durations.iter().min().unwrap_or(&0);
+
+    println!("{} Results: Average = {} ms, Min = {} ms, Max = {} ms", operation_name, average, min, max);
 }

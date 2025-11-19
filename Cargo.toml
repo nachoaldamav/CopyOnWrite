@@ -7,9 +7,11 @@ license = "MIT"
 
 [dependencies]
 env_logger = { version = "0.10.0", features = ["auto-color", "color"] }
+futures = "0.3.30"
 lazy_static = "1.4.0"
 log = "0.4.20"
 tempfile = "3.8.0"
+tokio = {version = "1.37.0", features = ["full"]}
 
 # Dependencies specific to Windows
 [target.'cfg(target_os = "windows")'.dependencies]

@@ -7,7 +7,7 @@ use std::{
 use widestring::U16CString;
 use windows::Win32::Foundation::CloseHandle;
 use windows::Win32::Storage::FileSystem::FILE_FLAG_NO_BUFFERING;
-use windows::Win32::Storage::FileSystem::FlushFileBuffers;
+
 use windows::Win32::System::SystemServices::FILE_SUPPORTS_BLOCK_REFCOUNTING;
 use windows::{
     core::PCWSTR,
@@ -57,6 +57,14 @@ pub fn reflink_sync(src: &str, dest: &str) -> std::io::Result<()> {
         ));
     }
 
+    // Check if source and destination are on the same volume
+    if source_volume.drive_root != dest_volume.drive_root {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "Source and destination must be on the same volume",
+        ));
+    }
+
     // Create empty destination file
     let dest_file_handle = create_file(dest)?;
 
@@ -74,9 +82,6 @@ pub fn reflink_sync(src: &str, dest: &str) -> std::io::Result<()> {
 
     // Set destination file size
     set_file_size(dest_file_handle, source_file_size)?;
-
-    // Flush buffers
-    flush_file_buffers(dest_file_handle)?;
 
     // Duplicate extents
     duplicate_extents(
@@ -275,13 +280,15 @@ const MAX_CHUNK_SIZE: i64 = 2 * 1024 * 1024 * 1024;
 struct VolumeInfo {
     supports_cow: bool,
     cluster_size: u64,
+    drive_root: String,
 }
 
 impl VolumeInfo {
-    pub fn new(supports_cow: bool, cluster_size: u64) -> Self {
+    pub fn new(supports_cow: bool, cluster_size: u64, drive_root: String) -> Self {
         Self {
             supports_cow,
             cluster_size,
+            drive_root,
         }
     }
 }
@@ -352,7 +359,7 @@ fn get_volume_info_for_path(path: &str) -> Result<VolumeInfo, windows::core::Err
 
     let cluster_size = sectors_per_cluster as u64 * bytes_per_sector as u64;
 
-    let volume_info = VolumeInfo::new(supports_cow, cluster_size);
+    let volume_info = VolumeInfo::new(supports_cow, cluster_size, drive_root.clone());
 
     // Cache the information for future use.
     {
@@ -421,15 +428,7 @@ fn close_handle(handle: HANDLE) -> Result<(), windows::core::Error> {
     Ok(())
 }
 
-fn flush_file_buffers(file_handle: HANDLE) -> Result<(), windows::core::Error> {
-    unsafe {
-        if FlushFileBuffers(file_handle).is_ok() {
-            Ok(())
-        } else {
-            Err(windows::core::Error::from_win32())
-        }
-    }
-}
+
 
 #[cfg(test)]
 mod tests {
